@@ -130,6 +130,11 @@ If you use this software please cite it as:
 
 
 ## Would you like to contribute?
+The git-flow branching approach is used. The following branches exists
+- matser: stable branch of the code (only to be updated with new releases)
+- dev: development branch 
+- feauture: branches where new feautres are being developed. Use git flow feauture start <MYFEAUTURE> to create a new feauture and git flow feauture finish MYFEATURE to merge it back to dev. 
+- release/vX.X.X: a particular relase of the code, use git flow release start <RELEASE NAME>  and git flow release finish <RELASE NAME> to merge it back with dev
 
 For questions and queries contact M. Rovira-Navarrro at m.roviranavarro@tudelft.nl
 
