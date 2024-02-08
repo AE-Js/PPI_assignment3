@@ -1,0 +1,150 @@
+%% set_boundary_indices
+%% SHORT DESCRIPTION
+% Small helper function that selects the radial boundary locations based 
+% on the selected method. It sets the number of points in each layer as well
+% as the indices at which the boundary's are located. 
+%% INPUT
+% Numerics: struct that contains the necessary data and that will be
+%           altered
+% Interior_Model: struct that contains all the physical data, in case of
+%                 the 'fixed' method the struct will also be altered.
+% The four options for the boundary locations are: combination, variable, fixed and manual
+%   - combination: This method is a combination of the fixed and variable
+%       method. Numerics.Nrbase serves as the base number of points per layer
+%       onto which an additional number of points is added based on the
+%       physical size of the layer. The total number of points will depend on
+%       the number of layers but is roughly given by (Nlayers+1)*Nrbase
+%   - variable: This method sets the number of radial points in each layer
+%       equal to Numerics.Nrbase. The variable name thus comes from the fact
+%       that the stepsize is variable. 
+%   - fixed: This method sets the total number of points equal to Nrbase.
+%       Same as for the variable method, the name fixed thus means that the
+%       stepsize is kept fixed. WARNING: This method changes the physical
+%       boundary locations to ensure that they occur at a integer number of
+%       points.
+%   - manual: This method allows the user to set the number of points per 
+%       layer manually. In order for it to work an array needs to be
+%       provided as a varargin after putting 'manual' as a varargin as well. 
+%       The syntax of the array needs to be: [0, points in layer #1, points
+%       in layer #2, etc]
+%% OUTPUT
+% Numerics: Changed struct, same as the input struct
+% Interior_model: Changed struct (only in case of the 'fixed' method)
+%% FUNCTION ------------------------------------------------------------------
+function [Numerics, Interior_Model] = set_boundary_indices(Numerics,Interior_Model,varargin)
+verbose = 0;
+Nrlayer_manual = [];
+for k = 1:length(varargin)
+    if strcmpi(varargin{k},'verbose')
+        verbose=1; 
+        varargin{k}=[];
+    end
+    if strcmpi(varargin{k},'manual')
+        Nrlayer_manual=varargin{k+1}; 
+        varargin{k+1}=[]; 
+        varargin{k}=[];
+    end
+end
+
+% First check if there is more than 1 active layer
+if Numerics.Nlayers > 2
+    % Fill Nrlayer, Nr and BCindices based on the selected method
+    if Numerics.method == "combination"
+        frac_r = [];
+        for ilayer=2:Numerics.Nlayers
+            frac_r = [frac_r (Interior_Model(ilayer).R0-Interior_Model(ilayer-1).R0)/ ...
+                        (Interior_Model(end).R0-Interior_Model(1).R0)];
+        end
+        Numerics.Nrlayer = [0 floor(frac_r*Numerics.Nrbase)+Numerics.Nrbase];
+        Numerics.Nr = sum(Numerics.Nrlayer); % Total number of radial points
+
+        % Set boundary indices
+        for ilayer=2:Numerics.Nlayers-1
+            if ilayer == 2
+                ind_boundary = Numerics.Nrlayer(ilayer);
+            else
+                next_boundary = sum(Numerics.Nrlayer(1:(ilayer)));
+                ind_boundary = [ind_boundary next_boundary];
+            end
+        end
+        Numerics.BCindices = ind_boundary;
+
+    elseif Numerics.method == "variable"
+        Numerics.Nrlayer = [0, floor(Numerics.Nrbase), floor(Numerics.Nrbase), floor(Numerics.Nrbase)];
+        Numerics.Nr = sum(Numerics.Nrlayer); % Total number of radial points
+
+        % Set boundary indices
+        for ilayer=2:Numerics.Nlayers-1
+            if ilayer == 2
+                ind_boundary = Numerics.Nrlayer(ilayer);
+            else
+                next_boundary = sum(Numerics.Nrlayer(1:(ilayer)));
+                ind_boundary = [ind_boundary next_boundary];
+            end
+        end
+        Numerics.BCindices = ind_boundary;
+
+    elseif Numerics.method == "fixed"
+        delta_r = (Interior_Model(end).R0-Interior_Model(1).R0)/Numerics.Nrbase;
+        for ilayer=2:Numerics.Nlayers-1
+            if ilayer == 2
+                ind_boundary = floor((Interior_Model(ilayer).R0-Interior_Model(1).R0)/delta_r);
+                Interior_Model(ilayer).R0 = Interior_Model(1).R0 + ind_boundary*delta_r;
+                temp_Nrlayer = [0, ind_boundary(1)];
+            else
+                temp_boundary = floor((Interior_Model(ilayer).R0-Interior_Model(1).R0)/delta_r);
+                temp_Nrlayer = [temp_Nrlayer temp_boundary-ind_boundary(end)];
+                ind_boundary = [ind_boundary temp_boundary];   
+                Interior_Model(ilayer).R0 = Interior_Model(1).R0 + temp_boundary*delta_r;
+            end
+        end
+        
+        Numerics.Nrlayer = [temp_Nrlayer Numerics.Nrbase-ind_boundary(end)];
+        Numerics.Nr = sum(Numerics.Nrlayer);
+        if ~(Numerics.Nrbase == Numerics.Nr)
+            error('Error. \nNumerics.Nr is not equal to Numerics.Nrbase')
+        end
+        Numerics.BCindices = ind_boundary;
+    
+    % Provide a way to manual set the number of points in each layer
+    elseif Numerics.method == "manual"
+        if isempty(Nrlayer_manual)
+            error(['Error. \nAttempted to manually set Nrlayer but was not provided with an array. ' ...
+                   'Put manual followed by the array in the varargin to fix this error'])
+        end
+        Numerics.Nrlayer = Nrlayer_manual;
+        Numerics.Nr = sum(Numerics.Nrlayer);
+
+        % Set BCindices based on the provided Nrlayer array
+        for ilayer=2:Numerics.Nlayers-1
+            if ilayer == 2
+                ind_boundary = Numerics.Nrlayer(ilayer);
+            else
+                next_boundary = sum(Numerics.Nrlayer(1:(ilayer)));
+                ind_boundary = [ind_boundary next_boundary];
+            end
+        end
+        Numerics.BCindices = ind_boundary;
+
+    else
+        error('Error. \nNot a valid selection of Numerics.method')
+    end
+
+% If the model only contains a single layer set Numerics.Nr equal to
+% Numerics.Nrbase and Numerics.BCindices is set to empty
+else
+    Numerics.BCindices = [];
+    Numerics.Nrlayer = [0, Numerics.Nrbase];
+    Numerics.Nr = Numerics.Nrbase;
+end
+
+% Print results if verbose
+if verbose == 1
+    disp('Inside set_boundary_indices: ')
+    disp(['Nrlayer: ' num2str(Numerics.Nrlayer)])
+    disp(['BCindices: ' num2str(Numerics.BCindices)])
+    disp(['Nr: ' num2str(Numerics.Nr)])
+    disp(' ')
+end
+
+end
