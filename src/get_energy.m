@@ -173,11 +173,11 @@ end
 % If there is only one non-uniform layer obtain couplings from large file
 if any(uniformlayers)   
     % Generate coupling file name
-    coupling_file_name=['Files_Coupling/E_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
+    coupling_file_name=[Numerics.coupling_file_location 'E_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
         str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
     
     % look if there is a file that contains the couplings
-    coupling_file_name_search=['Files_Coupling/E_struct__Nrheomax__*__forc__' str_forc '__N__*__per*.mat'];
+    coupling_file_name_search=[Numerics.coupling_file_location 'E_struct__Nrheomax__*__forc__' str_forc '__N__*__per*.mat'];
     possible_couplings_files=dir(coupling_file_name_search);
     file_found=0;
     i=1; 
@@ -198,7 +198,7 @@ if any(uniformlayers)
 
         % Check whether the file fullfills the criteria and add it to the list
         if Nrheomax_file>=Numerics.Nrheo_max && perturbation_order_file>=Numerics.perturbation_order && Nenergy_file >= Numerics.Nenergy
-            interim_name = ['Files_Coupling/' possible_couplings_files(i).name];
+            interim_name = [Numerics.coupling_file_location possible_couplings_files(i).name];
             potential_coupling_files = [potential_coupling_files convertCharsToStrings(interim_name)];
             rheo_max_file_list = [rheo_max_file_list Nrheomax_file];
         end
@@ -262,7 +262,8 @@ else
     end
 
     % Set coupling file name
-    coupling_file_name=['Files_Coupling/E__rheo__0_0__forc__' str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
+    coupling_file_name=[Numerics.coupling_file_location 'E__rheo__0_0__forc__' str_forc '__N__' ...
+                       num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
     
     % Check whether the file exists
     if isfile(coupling_file_name)==1
@@ -286,10 +287,14 @@ else
 end
 
 if out_file~=0
-    out_file_name=[save_location out_file 'E__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.txt'];
+    out_file_name = [save_location out_file 'E__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
+                    str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.txt'];
     FID=fopen(out_file_name,'w');
-    out_file_name_E_contribution=[save_location 'Energy_contribution_matrix__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
-    out_file_name_E_s=[save_location 'Energy_s__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
+    out_file_name_E_contribution = [save_location 'Energy_contribution_matrix__Nrheomax__' num2str(Numerics.Nrheo_max) ...
+                                   '__forc__' str_forc '__N__' num2str(Numerics.Nenergy) '__per' ...
+                                   num2str(Numerics.perturbation_order) '.mat'];
+    out_file_name_E_s = [save_location 'Energy_s__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' str_forc ...
+                        '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
 end
 
 %% (3) COMPUTE ENERGY SPECTRA

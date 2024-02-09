@@ -2,16 +2,16 @@
 %close all
 clear all
 clc
-addpath(genpath('/home/allard/Code/LOV3D/LOV3D/'))
+addpath(genpath('/home/allard/Code/New_LOV3D/lov3d/'))
 set(0,'defaulttextInterpreter','latex') 
 mfile_name          = mfilename('fullpath');
-[pathstr,name,ext]  = fileparts(mfile_name);
+[pathstr,name,ext] = fileparts(mfile_name);
 cd(pathstr);
 cd('..')
 addpath(genpath(pwd))
 
 % Location where any data will be saved, needs to end with /
-save_location = 'Test_files/test5_nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50_3layers/';
+save_location = 'files/output/multi_layer_example/';
 if ~isfolder(save_location)
     mkdir(save_location)
 end
@@ -38,7 +38,7 @@ Interior_Model(1).rho0_2 = 5157.96;%5150; % rho_2 in kg m^-3 (used for icy moons
 % Interior_Model values for mantle/asthenosphere/crust layers
 % Number of layers on top of the core should be equal to Numerics.Nlayers
 % If the layer is elastic eta should be NaN
-Interior_Model(2).R0 = 1200;%R_Io; % outer radius of this layer
+Interior_Model(2).R0 = 1200; % outer radius of this layer
 Interior_Model(2).rho0 = 3244; % density in kg m^-3
 Interior_Model(2).Ks0 = 200e9; % bulk modulus in Pa
 Interior_Model(2).mu0 = 60e9; % shear modulus in Pa
@@ -85,6 +85,7 @@ Numerics.Nenergy = 12; % maximum degree to which energy dissipation is expanded
 Numerics.rheology_cutoff = 2; % maximum order of difference (so in log) up to which rheology is still used 
 Numerics.parallel_sol = 0; % Calculate the solution using a parfor-loop either 0 or 1
 Numerics.parallel_gen = 1; % Calculate potential coupling files using parfor-loops either 0 or 1
+Numerics.coupling_file_location = 'files/couplings/'; % MUST END WITH A '/' , Location where coupling files are saved or should be saved 
 
 [Numerics, Interior_Model] = set_boundary_indices(Numerics, Interior_Model,'verbose');
 

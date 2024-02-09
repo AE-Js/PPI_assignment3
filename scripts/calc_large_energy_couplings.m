@@ -2,6 +2,9 @@ clear all;
 close all;
 clc
 
+%% Set relevant structs
+% Set the number of rheology modes, the forcing, the perturbation order and
+% the number of energy degrees that are taken into account. 
 Numerics.Nrheo_max = 10;
 Forcing(1).n = 2;
 Forcing(1).m = 0;
@@ -25,16 +28,16 @@ for i=1:length(Forcing)
 end
 
 % Generate coupling file name
-coupling_file_name=['Files_Coupling/E__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
+coupling_file_name=['files/couplings/E_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
     str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
 verbose=1;
 
 %% compute couplings 
 disp('compute couplings')
-Couplings=get_energy_couplings_all(Numerics.perturbation_order,Numerics.Nrheo_max,Numerics.Nenergy,Forcing,Numerics,'verbose');
+Couplings = get_energy_couplings_all(Numerics.perturbation_order,Numerics.Nrheo_max,Numerics.Nenergy,Forcing,Numerics,'verbose');
 
-%% 	'-v7.3'
-save(coupling_file_name,'Couplings','-v7.3')
+%% RECOMMENDED. Save file using '-v7.3' with compression.
+save(coupling_file_name,'-struct','Couplings','-v7.3')
 
 %% 	'-v7.3' No compression
-% save(coupling_file_name,'Couplings','-v7.3','-nocompression')
+% save(coupling_file_name,'-struct','Couplings','-v7.3','-nocompression')

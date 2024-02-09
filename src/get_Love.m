@@ -153,6 +153,7 @@ if out_file~=0
     out_file_name_y=[save_location 'y__' num2str(Numerics.Nrheo_max) '_per' num2str(Numerics.rheology_cutoff) ...
         '__forc__' num2str(Forcing.n) '_' num2str(Forcing.m) '_per' num2str(Numerics.perturbation_order) '.mat'];
 end
+
 %% (2) OBTAIN COUPLINGS --------------------------------------------------------------
 if verbose==1
     disp('Obtaining Couplings....')
@@ -169,11 +170,12 @@ uniformlayers = uniformlayers == 0;
 % If there is only one non-uniform layer obtain couplings
 if any(uniformlayers) 
     % Generate coupling file name
-    coupling_file_name=['Files_Coupling/L_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
+    coupling_file_name=[Numerics.coupling_file_location 'L_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
         num2str(Forcing.n) '_' num2str(Forcing.m) '_per' num2str(Numerics.perturbation_order) '.mat'];
 
     % Look if there is a file that contains the couplings
-    coupling_file_name_search=['Files_Coupling/L_struct__Nrheomax__*__forc__' num2str(Forcing.n) '_' num2str(Forcing.m) '_per*.mat'];
+    coupling_file_name_search=[Numerics.coupling_file_location 'L_struct__Nrheomax__*__forc__' num2str(Forcing.n) ...
+                              '_' num2str(Forcing.m) '_per*.mat'];
     possible_couplings_files=dir(coupling_file_name_search);
     file_found=0;
     i=1; 
@@ -191,7 +193,7 @@ if any(uniformlayers)
 
         % Check whether the file fullfills the criteria and add it to the list
         if Nrheomax_file>=Numerics.Nrheo_max && perturbation_order_file>=Numerics.perturbation_order 
-            interim_name = ['Files_Coupling/' possible_couplings_files(i).name];
+            interim_name = [Numerics.coupling_file_location possible_couplings_files(i).name];
             potential_coupling_files = [potential_coupling_files convertCharsToStrings(interim_name)];
             rheo_max_file_list = [rheo_max_file_list Nrheomax_file];
         end
