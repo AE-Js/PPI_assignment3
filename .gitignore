@@ -2,3 +2,5 @@
 **/.DS_Store
 /data
 !/data/README.md
+/files/couplings
+/files/output
