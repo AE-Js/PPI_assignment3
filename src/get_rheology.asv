@@ -103,11 +103,10 @@ for ilayer=1:Numerics.Nlayers
     if ilayer==1
         Interior_Model(ilayer).R = Interior_Model(ilayer).R0/Interior_Model(end).R0;
         Interior_Model(ilayer).rho = Interior_Model(ilayer).rho0/Interior_Model(end).rho0;
-        if isfield(Interior_Model(1),"Delta_rho0")==0
-            Interior_Model(ilayer).Delta_rho0= (Interior_Model(1).rho0-Interior_Model(2).rho0);
-            Interior_Model(ilayer).Delta_rho = (Interior_Model(1).rho0-Interior_Model(2).rho0)/Interior_Model(end).rho0;
-            % else the Delta_rho0 is provided by the user 
+        if isfield(Interior_Model,"Delta_rho")==0
+            Interior_Model(ilayer).Delta_rho = Interior_Model(1).rho-Interior_Model(2).rho;
         end
+        Interior_Model(ilayer).rho_2 = Interior_Model(ilayer).rho0_2/Interior_Model(end).rho0;
         Interior_Model(ilayer).Delta_rho = Interior_Model(ilayer).Delta_rho0/Interior_Model(end).rho0;
         Interior_Model(ilayer).Gg0 = G; % G
         Interior_Model(ilayer).Gg  = Gg; % Non-dimensionalised G       
@@ -119,13 +118,8 @@ for ilayer=1:Numerics.Nlayers
         Interior_Model(ilayer).rho = Interior_Model(ilayer).rho0/Interior_Model(end).rho0;
         Interior_Model(ilayer).Ks = Interior_Model(ilayer).Ks0/Interior_Model(end).mu0;
         Interior_Model(ilayer).mu = Interior_Model(ilayer).mu0/Interior_Model(end).mu0;
-        if isfield(Interior_Model(1),"MaxTime")==1
-            Interior_Model(ilayer).eta=Interior_Model(ilayer).MaxTime/(2*pi);
-            Interior_Model(ilayer).eta0=Interior_Model(ilayer).MaxTime/(2*pi);
-        else
-            Interior_Model(ilayer).eta = Interior_Model(ilayer).eta0/(Interior_Model(end).mu0*Forcing(1).Td);
-            Interior_Model(ilayer).MaxTime = 2*pi*Interior_Model(ilayer).eta0/Interior_Model(ilayer).mu0/Forcing(1).Td; % \omega is used to non-dimensionalize time
-        end
+        Interior_Model(ilayer).eta = Interior_Model(ilayer).eta0/(Interior_Model(end).mu0*Forcing(1).Td);
+        Interior_Model(ilayer).MaxTime = 2*pi*Interior_Model(ilayer).eta0/Interior_Model(ilayer).mu0/Forcing(1).Td; % \omega is used to non-dimensionalize time
         Interior_Model(ilayer).Gg0 = G; % G
         Interior_Model(ilayer).Gg  = Gg; % Non-dimensionalised G
         % Density difference with layer below taken such that it should be positive
@@ -565,7 +559,6 @@ for ilayer=2:Numerics.Nlayers
                 Interior_Model(ilayer).mu00R=mu00R;
     
                 % PLOT THE RHEOLOGY STRUCTURE TO CHECK
-                % There is an internal check whether it will plot or not.
                 plot_rheology_map(plot_rheology_spectra,mu_zlonlat,eta_zlonlat, ...
                                   MaxTime_zlonlat,Interior_Model(ilayer),Cmu_zlonlat, ...
                                   m_g,n_g,muI_aux,muI_SPH,muR_aux,muR_SPH, ...
