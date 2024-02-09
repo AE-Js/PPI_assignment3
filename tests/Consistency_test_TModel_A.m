@@ -1,7 +1,7 @@
 clear all
 clc
 %% Test correct function of the code by comparing with some previous results
-addpath(genpath('/home/allard/Code/LOV3D/LOV3D/'))
+addpath(genpath('/home/allard/Code/New_LOV3D/lov3d/'))
 set(0,'defaulttextInterpreter','latex') 
 mfile_name          = mfilename('fullpath');
 [pathstr,name,ext]  = fileparts(mfile_name);
@@ -9,15 +9,20 @@ cd(pathstr);
 cd('..')
 addpath(genpath(pwd))
 
+% NOTHING WILL BE SAVED WHEN RUNNING THIS UNIT TEST!
 % Location where any data will be saved, needs to end with /
-save_location = 'Test_files/test40_Model_A_consistency_check/';
+save_location = 'files/output/test_internal_consistency/';
 if ~isfolder(save_location)
     mkdir(save_location)
 end
 Startall = tic;
 
+%% NOTICE!
+% This test can take a long time to complete and should therefore be used
+% with caution!
+
 %% Loop stuff 
-Nbase_array = [5,10,20,50,100,200,500];%,1000,2000];
+Nbase_array = [5,10,20,50,100,200,500,1000,2000];
 N_iteration = length(Nbase_array);
 k2_array = zeros(1,N_iteration);
 e00_array = zeros(1,N_iteration);
@@ -27,7 +32,6 @@ e_01 = zeros(1,N_iteration);
 e_02 = zeros(1,N_iteration);
 Nr_array = zeros(1,N_iteration);
 
-% jj=2 means "new" method of constant number of steps in each layer
 for ii=1:N_iteration
 
 disp(['Starting iteration: ' num2str(ii)])
@@ -100,9 +104,6 @@ Q_diff_latlon = Q_prod_latlon - Q_mean;
 c = 0.01; % D2-0 model
 Phi_mean = 0.1;
 Phi_diff_latlon = c*Q_diff_latlon;
-
-% Ensure that mean of Phi stays at 0.1
-% Phi_diff_latlon = Phi_diff_latlon - mean(Phi_diff_latlon(:));
 
 % Viscosity
 B_eta = 20;
@@ -193,9 +194,10 @@ Numerics.solution_cutoff = 12; % maximum degree of solution, not used if perturb
 Numerics.load_couplings = 1; % 0=no loading, 1=loading of specific file, 2=searches for big enough file
 Numerics.Nenergy = 12; % maximum degree to which energy dissipation is expanded 
 Numerics.rheology_cutoff = 2; % maximum difference (in log) up to which rheology is still used 
-Numerics.minimum_rheology_value = -15; % minimum value for the exponent of a rheology term
+Numerics.minimum_rheology_value = -13; % minimum value for the exponent of a rheology term
 Numerics.parallel_sol = 0; % Calculate the solution using a parfor-loop either 0 or 1
 Numerics.parallel_gen = 1; % Calculate potential coupling files using parfor-loops either 0 or 1
+Numerics.coupling_file_location = 'files/couplings/'; % MUST END WITH A '/' , Location where coupling files are saved or should be saved 
 
 [Numerics, Interior_Model] = set_boundary_indices(Numerics, Interior_Model,'verbose');
 Nr_array(ii) = Numerics.Nr;
@@ -307,10 +309,11 @@ ratio_Uni_variable = real(abs(e_01_Uni - e_02_Uni)) ./ e_01_Uni * 100;
 ratio_variable = real(abs(e_01 - e_02)) ./ e_01 * 100;
 loglog(Nbase_array,ratio_Uni_variable)
 hold on
-loglog(Nbase_array,ratio_variable)
+loglog(Nbase_array,ratio_variable,'--')
 hold off
 grid on
 legend('Spherically symmetric', 'Lateral variations','Location','best')
 xlabel('Total number of radial points')
 ylabel('$ |E_1 - E_2|/ E_1 \cdot 100 $ [\%]')
+title('Diff. between calculating energy using integrated stress or love numbers')
 
