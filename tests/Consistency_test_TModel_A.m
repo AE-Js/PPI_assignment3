@@ -304,7 +304,7 @@ end
 %%
 set(0,'defaulttextInterpreter','latex') 
 fig = figure(1)
-fontsize(fig, 24, "points")
+% fontsize(fig, 24, 'points')
 ratio_Uni_variable = real(abs(e_01_Uni - e_02_Uni)) ./ e_01_Uni * 100;
 ratio_variable = real(abs(e_01 - e_02)) ./ e_01 * 100;
 loglog(Nbase_array,ratio_Uni_variable)
