@@ -4,3 +4,5 @@
 !/data/README.md
 /files/couplings
 /files/output
+*.asv
+**/*.asv
