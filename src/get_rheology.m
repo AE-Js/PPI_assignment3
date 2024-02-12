@@ -79,39 +79,44 @@ for k = 1:length(varargin)
 end
 
 %% (0) Nondimensional ------------------------------------------------------------------
-% Non-dimensionalise the parameters based on the values in the outer layer
+% Non-dimensionalize the parameters based on the values in the outer layer
+
+% If the normalized gravitational constant is already provided, use that
 if isfield(Interior_Model(end),"Gg")==1 
-    Gg=Interior_Model(end).Gg;
+    Gg = Interior_Model(end).Gg;
 else
     Gg = G*(Interior_Model(end).R0*1000)^2*Interior_Model(end).rho0^2/Interior_Model(end).mu0;
 end
 
-% if calculate_G
-%     Gg = G*(Interior_Model(end).R0*1000)^2*Interior_Model(end).rho0^2/Interior_Model(end).mu0;
-% else
-%     % Test values for Gg, Legacy values (only used when comparing against old data)
-%     r_ratio=0.53;
-%     rho_r=1.59;
-%     mu_eff=5.2;
-%     rho_av=rho_r*r_ratio^3+(1-r_ratio^3);
-%     Gg = 3/(4*pi)/mu_eff/rho_av^2;
-%     % G=0.0388;
-%     % Gg = 0.0388;
-% end
+% If calculate_G=false a legacy version of the code is used
+if calculate_G && isfield(Interior_Model(end),"Gg")==0
+    Gg = G*(Interior_Model(end).R0*1000)^2*Interior_Model(end).rho0^2/Interior_Model(end).mu0;
+else
+    % Test values for Gg, Legacy values (only used when comparing against old data)
+    r_ratio = 0.53;
+    rho_r = 1.59;
+    mu_eff = 5.2;
+    rho_av = rho_r*r_ratio^3+(1-r_ratio^3);
+    Gg = 3/(4*pi)/mu_eff/rho_av^2;
+    % G=0.0388;
+    % Gg = 0.0388;
+end
 
 for ilayer=1:Numerics.Nlayers
     if ilayer==1
         Interior_Model(ilayer).R = Interior_Model(ilayer).R0/Interior_Model(end).R0;
         Interior_Model(ilayer).rho = Interior_Model(ilayer).rho0/Interior_Model(end).rho0;
-        if isfield(Interior_Model(1),"Delta_rho0")==0
+        
+        % Check whether a dimensional delta rho between the core and the second layer is provided
+        if isfield(Interior_Model(ilayer),"Delta_rho0")==0
             Interior_Model(ilayer).Delta_rho0= (Interior_Model(1).rho0-Interior_Model(2).rho0);
-            Interior_Model(ilayer).Delta_rho = (Interior_Model(1).rho0-Interior_Model(2).rho0)/Interior_Model(end).rho0;
-            % else the Delta_rho0 is provided by the user 
+            % Else the Delta_rho0 is provided by the user 
         end
         Interior_Model(ilayer).Delta_rho = Interior_Model(ilayer).Delta_rho0/Interior_Model(end).rho0;
         Interior_Model(ilayer).Gg0 = G; % G
-        Interior_Model(ilayer).Gg  = Gg; % Non-dimensionalised G       
-        % build the (normalized) average density of the body
+        Interior_Model(ilayer).Gg  = Gg; % Non-dimensionalised G  
+
+        % Build the (normalized) average density of the body
         rho_av0 = 4/3*pi*Interior_Model(ilayer).R0^3*Interior_Model(ilayer).rho0;
         rho_av = Interior_Model(ilayer).rho*Interior_Model(ilayer).R^3;
     else
@@ -119,18 +124,29 @@ for ilayer=1:Numerics.Nlayers
         Interior_Model(ilayer).rho = Interior_Model(ilayer).rho0/Interior_Model(end).rho0;
         Interior_Model(ilayer).Ks = Interior_Model(ilayer).Ks0/Interior_Model(end).mu0;
         Interior_Model(ilayer).mu = Interior_Model(ilayer).mu0/Interior_Model(end).mu0;
-        if isfield(Interior_Model(1),"MaxTime")==1
-            Interior_Model(ilayer).eta=Interior_Model(ilayer).MaxTime/(2*pi);
-            Interior_Model(ilayer).eta0=Interior_Model(ilayer).MaxTime/(2*pi);
+        
+        % Check whether Maxwell time is given as input for this layer
+        if isfield(Interior_Model(ilayer),"MaxTime")==1
+            if ~isempty(Interior_Model(ilayer).MaxTime)
+                Interior_Model(ilayer).eta = Interior_Model(ilayer).MaxTime/(2*pi);
+                Interior_Model(ilayer).eta0 = Interior_Model(ilayer).MaxTime/(2*pi);
+            else
+                Interior_Model(ilayer).eta = Interior_Model(ilayer).eta0/(Interior_Model(end).mu0*Forcing(1).Td);
+                % 1\omega is used to non-dimensionalize time
+                Interior_Model(ilayer).MaxTime = 2*pi*Interior_Model(ilayer).eta0/Interior_Model(ilayer).mu0/Forcing(1).Td; 
+            end
         else
             Interior_Model(ilayer).eta = Interior_Model(ilayer).eta0/(Interior_Model(end).mu0*Forcing(1).Td);
-            Interior_Model(ilayer).MaxTime = 2*pi*Interior_Model(ilayer).eta0/Interior_Model(ilayer).mu0/Forcing(1).Td; % \omega is used to non-dimensionalize time
+            % 1\omega is used to non-dimensionalize time
+            Interior_Model(ilayer).MaxTime = 2*pi*Interior_Model(ilayer).eta0/Interior_Model(ilayer).mu0/Forcing(1).Td; 
         end
         Interior_Model(ilayer).Gg0 = G; % G
         Interior_Model(ilayer).Gg  = Gg; % Non-dimensionalised G
+
         % Density difference with layer below taken such that it should be positive
         Interior_Model(ilayer).Delta_rho = Interior_Model(ilayer-1).rho-Interior_Model(ilayer).rho; 
-        % add mass of the layer to obtain the (normalized) average density
+
+        % Add mass of the layer to obtain the (normalized) average density
         rho_av = rho_av + Interior_Model(ilayer).rho*(Interior_Model(ilayer).R^3-Interior_Model(ilayer-1).R^3);
         rho_av0 = rho_av0 + 4/3*pi*Interior_Model(ilayer).rho0*(Interior_Model(ilayer).R0^3-Interior_Model(ilayer-1).R0^3);
     end
@@ -308,37 +324,42 @@ end
 for ilayer=2:Numerics.Nlayers
     Interior_Model(ilayer).elastic=0;
     Interior_Model(ilayer).uniform=1;
+
+    % Check for elasticity
     if isnan(Interior_Model(ilayer).eta0) || isnan(Interior_Model(ilayer).eta)
-        Interior_Model(ilayer).elastic=1; 
+        Interior_Model(ilayer).elastic = 1; 
     end
+
+    % Check for lateral variations, either based on percentages or full
+    % rheology field inputs.
     if isfield(Interior_Model(ilayer),'eta_variable')==1 
         if max(abs(Interior_Model(ilayer).eta_variable(:,3)))>0
-            Interior_Model(ilayer).uniform=0;
+            Interior_Model(ilayer).uniform = 0;
         end
     end
     if isfield(Interior_Model(ilayer),"eta_latlon")
         if ~isempty(Interior_Model(ilayer).eta_latlon)
-            Interior_Model(ilayer).uniform=0;
+            Interior_Model(ilayer).uniform = 0;
         end
     end
     if isfield(Interior_Model(ilayer),'mu_variable')==1
         if max(abs(Interior_Model(ilayer).mu_variable(:,3)))>0
-            Interior_Model(ilayer).uniform=0;
+            Interior_Model(ilayer).uniform = 0;
         end
     end
     if isfield(Interior_Model(ilayer),"mu_latlon")
         if ~isempty(Interior_Model(ilayer).mu_latlon)
-            Interior_Model(ilayer).uniform=0;
+            Interior_Model(ilayer).uniform = 0;
         end
     end
     if isfield(Interior_Model(ilayer),'K_variable')==1
         if max(abs(Interior_Model(ilayer).K_variable(:,3)))>0
-            Interior_Model(ilayer).uniform=0;
+            Interior_Model(ilayer).uniform= 0 ;
         end
     end
     if isfield(Interior_Model(ilayer),"k_latlon")
         if ~isempty(Interior_Model(ilayer).k_latlon)
-            Interior_Model(ilayer).uniform=0;
+            Interior_Model(ilayer).uniform = 0;
         end
     end
 end
