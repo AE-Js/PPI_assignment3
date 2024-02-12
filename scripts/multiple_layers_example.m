@@ -22,53 +22,53 @@ Startall = tic;
 % radii are fractions. 
 
 % All values are taken from Steinke et al. (2020a)
-% non-dimensional parameters for Io (see Section 2.2 and Table 1)
-omega0=4.1086E-05; %Io's orbital frequency 
-T=2*pi/omega0; %Io's orbital period
-mu_eff=5.2; % mu_mean/(gs*rho_mean*R) gs=gravity acceleration at the surface
-R_Io = 1822; % Radius of Io in km
-R_CMB = 965.66;%965; % Radius of Io's core
+% non-dimensional parameters for Io (see Section 2.2 and Table 1).
+% Based on Model A
+omega0 = 4.1086E-05; %Io's orbital frequency
+T = 1.769138*24*3600; % in seconds
+R_Io = 1821.6; % Radius of Io in km
+R_CMB = 965; % Radius of Io's core
 
 % Interior_Model goes from core (1) to surface (n) with indices
 % Interior_Model values for the core
 Interior_Model(1).R0 = R_CMB; % CMB in km 
-Interior_Model(1).rho0 = 5157.96;%5150; % average density in kg m^-3
-Interior_Model(1).rho0_2 = 5157.96;%5150; % rho_2 in kg m^-3 (used for icy moons)
+Interior_Model(1).rho0 = 5150; % average density in kg m^-3
+Interior_Model(1).rho0_2 = 5150; % rho_2 in kg m^-3 (used for icy moons)
 
 % Interior_Model values for mantle/asthenosphere/crust layers
 % Number of layers on top of the core should be equal to Numerics.Nlayers
 % If the layer is elastic eta should be NaN
-Interior_Model(2).R0 = 1200; % outer radius of this layer
+Interior_Model(2).R0 = 1591.6; % outer radius of this layer
 Interior_Model(2).rho0 = 3244; % density in kg m^-3
-Interior_Model(2).Ks0 = 200e9; % bulk modulus in Pa
-Interior_Model(2).mu0 = 60e9; % shear modulus in Pa
-Interior_Model(2).eta0 = 4.942e15; % viscosity in Pa s
-Interior_Model(2).nR = 2; % degree of lateral variations
+Interior_Model(2).Ks0 = 200e16; % bulk modulus in Pa
+Interior_Model(2).mu0 = 6e10; % shear modulus in Pa
+Interior_Model(2).eta0 = 1e20; % viscosity in Pa s
+Interior_Model(2).nR = 1; % degree of lateral variations
 Interior_Model(2).mR = 0; % order of lateral variations
 Interior_Model(2).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(2).variable_eta_p = 50; %peak-to-peak variations of viscosity (in %)
+Interior_Model(2).variable_eta_p = 0; %peak-to-peak variations of viscosity (in %)
 Interior_Model(2).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
 
-Interior_Model(3).R0 = 1500; % outer radius of this layer
+Interior_Model(3).R0 = 1791.6; % outer radius of this layer
 Interior_Model(3).rho0 = 3244; % density in kg m^-3
-Interior_Model(3).Ks0 = 200e9; % bulk modulus in Pa
-Interior_Model(3).mu0 = 60e9; % shear modulus in Pa
-Interior_Model(3).eta0 = 4.942e15; % viscosity in Pa s
+Interior_Model(3).Ks0 = 200e16; % bulk modulus in Pa
+Interior_Model(3).mu0 = 7.8e5; % shear modulus in Pa
+Interior_Model(3).eta0 = 1e11; % viscosity in Pa s
 Interior_Model(3).nR = 2; % degree of lateral variations
 Interior_Model(3).mR = 0; % order of lateral variations
 Interior_Model(3).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(3).variable_eta_p = 50; %peak-to-peak variations of viscosity (in %)
+Interior_Model(3).variable_eta_p = 20; %peak-to-peak variations of viscosity (in %)
 Interior_Model(3).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
 
 Interior_Model(4).R0 = R_Io; % outer radius of this layer
 Interior_Model(4).rho0 = 3244; % density in kg m^-3
-Interior_Model(4).Ks0 = 200e9; % bulk modulus in Pa
-Interior_Model(4).mu0 = 60e9; % shear modulus in Pa
-Interior_Model(4).eta0 = 4.942e15; % viscosity in Pa s
-Interior_Model(4).nR = 2; % degree of lateral variations
+Interior_Model(4).Ks0 = 200e16; % bulk modulus in Pa
+Interior_Model(4).mu0 = 6.5e10; % shear modulus in Pa
+Interior_Model(4).eta0 = 1e23; % viscosity in Pa s
+Interior_Model(4).nR = 1; % degree of lateral variations
 Interior_Model(4).mR = 0; % order of lateral variations
 Interior_Model(4).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(4).variable_eta_p = 50; %peak-to-peak variations of viscosity (in %)
+Interior_Model(4).variable_eta_p = 0; %peak-to-peak variations of viscosity (in %)
 Interior_Model(4).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
 
 % Set the rho difference such that the core can also represent an ocean
@@ -77,7 +77,7 @@ Interior_Model(1).Delta_rho0 = Interior_Model(1).rho0_2 - Interior_Model(2).rho0
 %% NUMERICS
 Numerics.Nlayers = 4; % number of concentric layers. Including the core!
 Numerics.method = 'combination'; % method of setting the radial points per layer: combination, variable, fixed and manual
-Numerics.Nrbase = 500; % depending on the method this will determine the number of points per layer
+Numerics.Nrbase = 200; % depending on the method this will determine the number of points per layer
 Numerics.perturbation_order = 2; %maximum order to which couplings are considered
 Numerics.solution_cutoff = 12; % maximum degree of solution, not used if perturbation order is specified
 Numerics.load_couplings = 1; % 0=no loading, 1=loading of specific file, 2=searches for big enough file
@@ -87,6 +87,7 @@ Numerics.parallel_sol = 0; % Calculate the solution using a parfor-loop either 0
 Numerics.parallel_gen = 1; % Calculate potential coupling files using parfor-loops either 0 or 1
 Numerics.coupling_file_location = 'files/couplings/'; % MUST END WITH A '/' , Location where coupling files are saved or should be saved 
 
+% Compute the indices for the radial boundaries
 [Numerics, Interior_Model] = set_boundary_indices(Numerics, Interior_Model,'verbose');
 
 %% Small but necessary additions/checks of the code
@@ -199,12 +200,10 @@ plot_energy_map(Energy_Spectra_Diff,'type','difference','projection','cut', ...
 [y_LatLonUni] = get_map(y_Uni(1),Interior_Model_Uni(end));
 yDif=y_LatLon; 
 yDif.y=y_LatLon.y-y_LatLonUni.y;
-%plot_map(y_LatLonUni,Interior_Model_UniU,'field_name','all','radial_point',floor(Numerics.Nr*0.5),'plot_title','Uniform Model (2,0)') %floor(Numerics.Nr*0.1)
-%plot_map(yDif,Interior_ModelU,'field_name','all','radial_point',floor(Numerics.Nr*0.5),'plot_title','Difference (2,0)') %floor(Numerics.Nr*0.1)
 plot_map(y_LatLon,Interior_Model(end),'field_name','all','radial_point',floor(Numerics.Nr*0.5), ...
     'plot_title','Variable Model','save_plot',[save_location 'Figure 6']);
 plot_map(y_LatLon,Interior_Model(end),'field_name','test_strain_stress','radial_point',floor(Numerics.Nr*0.5), ...
-    'plot_title','(2,0)','save_plot',[save_location 'Figure 7']);%,'save_plot',plot_name1)
+    'plot_title','(2,0)','save_plot',[save_location 'Figure 7']);
 plot_map(y_LatLonUni,Interior_Model_Uni(end),'field_name','test_strain_stress','radial_point',floor(Numerics.Nr*0.5), ...
     'plot_title','(2,0) Uniform','save_plot',[save_location 'Figure 8']);
 %% (2,2)
@@ -212,9 +211,6 @@ plot_map(y_LatLonUni,Interior_Model_Uni(end),'field_name','test_strain_stress','
 [y_LatLonUni] = get_map(y_Uni(2),Interior_Model_Uni(end));
 yDif=y_LatLon; 
 yDif.y=y_LatLon.y-y_LatLonUni.y;
-%plot_map(y_LatLonUni,Interior_Model_UniU,'field_name','all','radial_point',floor(Numerics.Nr*0.5),'plot_title','Uniform Model (2,0)') %floor(Numerics.Nr*0.1)
-%plot_map(yDif,Interior_ModelU,'field_name','all','radial_point',floor(Numerics.Nr*0.5),'plot_title','Difference (2,2)') %floor(Numerics.Nr*0.1)
-%plot_map(y_LatLon,Interior_ModelU,'field_name','all','radial_point',floor(Numerics.Nr*0.5),'plot_title','Variable Model')
 plot_map(y_LatLon,Interior_Model(end),'field_name','test_strain_stress','radial_point',floor(Numerics.Nr*0.5), ...
     'plot_title','(2,2)','save_plot',[save_location 'Figure 9']);
 
