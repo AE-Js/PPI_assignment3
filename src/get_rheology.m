@@ -81,16 +81,11 @@ end
 %% (0) Nondimensional ------------------------------------------------------------------
 % Non-dimensionalize the parameters based on the values in the outer layer
 
-% If the normalized gravitational constant is already provided, use that
-if isfield(Interior_Model(end),"Gg")==1 
-    Gg = Interior_Model(end).Gg;
-else
-    Gg = G*(Interior_Model(end).R0*1000)^2*Interior_Model(end).rho0^2/Interior_Model(end).mu0;
-end
-
 % If calculate_G=false a legacy version of the code is used
 if calculate_G && isfield(Interior_Model(end),"Gg")==0
     Gg = G*(Interior_Model(end).R0*1000)^2*Interior_Model(end).rho0^2/Interior_Model(end).mu0;
+elseif isfield(Interior_Model(end),"Gg")==1  % If the normalized gravitational constant is already provided, use that
+   Gg = Interior_Model(end).Gg; 
 else
     % Test values for Gg, Legacy values (only used when comparing against old data)
     r_ratio = 0.53;
