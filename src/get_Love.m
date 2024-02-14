@@ -341,8 +341,13 @@ if verbose==1
         str_h=[str_h '(' num2str(Couplings.n_s(index_order(k))) ',' num2str(Couplings.m_s(index_order(k))) '),   '];
     end
     disp([num2str(j) 'th Order Modes'])
+    if j==0
+        disp('1 modes')
+        disp(['(' num2str(Forcing.n) ',' num2str(Forcing.m) '),   '])
+    else
     disp([num2str(length(index_order)) ' modes'])
     disp(str_h)
+    end
     end
     disp('----------- NUMERICAL INFORMATION ----------')
     disp(['Number of Modes ' num2str(Nsol)])
