@@ -43,33 +43,21 @@ Interior_Model(2).rho0 = 3244; % density in kg m^-3
 Interior_Model(2).Ks0 = 200e16; % bulk modulus in Pa
 Interior_Model(2).mu0 = 6e10; % shear modulus in Pa
 Interior_Model(2).eta0 = 1e20; % viscosity in Pa s
-Interior_Model(2).nR = 1; % degree of lateral variations
-Interior_Model(2).mR = 0; % order of lateral variations
-Interior_Model(2).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(2).variable_eta_p = 0; %peak-to-peak variations of viscosity (in %)
-Interior_Model(2).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
 
 Interior_Model(3).R0 = 1791.6; % outer radius of this layer
 Interior_Model(3).rho0 = 3244; % density in kg m^-3
 Interior_Model(3).Ks0 = 200e16; % bulk modulus in Pa
 Interior_Model(3).mu0 = 7.8e5; % shear modulus in Pa
 Interior_Model(3).eta0 = 1e11; % viscosity in Pa s
-Interior_Model(3).nR = 2; % degree of lateral variations
-Interior_Model(3).mR = 0; % order of lateral variations
-Interior_Model(3).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(3).variable_eta_p = 20; %peak-to-peak variations of viscosity (in %)
-Interior_Model(3).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
+Interior_Model(3).eta_variable_p2p(:,1) = 2; % degree of lateral variations
+Interior_Model(3).eta_variable_p2p(:,2) = 0; % order of lateral variations
+Interior_Model(3).eta_variable_p2p(:,3) = 20; %peak-to-peak variations of viscosity (in %)
 
 Interior_Model(4).R0 = R_Io; % outer radius of this layer
 Interior_Model(4).rho0 = 3244; % density in kg m^-3
 Interior_Model(4).Ks0 = 200e16; % bulk modulus in Pa
 Interior_Model(4).mu0 = 6.5e10; % shear modulus in Pa
 Interior_Model(4).eta0 = 1e23; % viscosity in Pa s
-Interior_Model(4).nR = 1; % degree of lateral variations
-Interior_Model(4).mR = 0; % order of lateral variations
-Interior_Model(4).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(4).variable_eta_p = 0; %peak-to-peak variations of viscosity (in %)
-Interior_Model(4).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
 
 % Set the rho difference such that the core can also represent an ocean
 Interior_Model(1).Delta_rho0 = Interior_Model(1).rho0_2 - Interior_Model(2).rho0;
@@ -96,21 +84,6 @@ if ~(Numerics.Nlayers == length(Interior_Model))
     error('Error. \nSize of Interior_Model struct must be equal to Numerics.Nlayers')
 end
 
-for ilayer=2:Numerics.Nlayers
-    if ~(size(Interior_Model(ilayer).variable_mu_p) == size(Interior_Model(ilayer).nR) & ...
-            size(Interior_Model(ilayer).variable_mu_p) == size(Interior_Model(ilayer).mR))
-        error(['Error. \nSize of variable_mu_p in layer #' num2str(ilayer) ' is not equal to the number of modes'])
-    end
-    if ~(size(Interior_Model(ilayer).variable_eta_p) == size(Interior_Model(ilayer).nR) & ...
-            size(Interior_Model(ilayer).variable_eta_p) == size(Interior_Model(ilayer).mR))
-        error(['Error. \nSize of variable_eta_p in layer #' num2str(ilayer) ' is not equal to the number of modes'])
-    end
-    if ~(size(Interior_Model(ilayer).variable_K_p) == size(Interior_Model(ilayer).nR) & ...
-            size(Interior_Model(ilayer).variable_K_p) == size(Interior_Model(ilayer).mR))
-        error(['Error. \nSize of variable_K_p in layer #' num2str(ilayer) ' is not equal to the number of modes'])
-    end
-end
-
 %% FORCING 
 % Forcing corresponding to a synchronous moon in an eccentric orbit (see Appendix D)
 Forcing(1).Td=2*pi/omega0;
@@ -130,9 +103,9 @@ Forcing(3).F=1/8*sqrt(6/5);
 % Build a uniform model based on the values of the lateral varying one
 Interior_Model_Uni=Interior_Model;
 for ilayer=2:Numerics.Nlayers
-    Interior_Model_Uni(ilayer).variable_mu_p=0; 
-    Interior_Model_Uni(ilayer).variable_eta_p=0; 
-    Interior_Model_Uni(ilayer).variable_K_p=0; 
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,1) = 0; 
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,2) = 0; 
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,3) = 0; 
 end
 % Calculates the rheology that will be used. First computes the complex 
 % spherical harmonics and then performs a fourier transform to obtain the 

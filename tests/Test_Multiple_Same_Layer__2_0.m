@@ -28,49 +28,43 @@ omega0=4.1086E-05; %Io's orbital frequency
 T=2*pi/omega0; %Io's orbital period
 mu_eff=5.2; % mu_mean/(gs*rho_mean*R) gs=gravity acceleration at the surface
 R_Io = 1822; % Radius of Io in km
-R_CMB = 965.66;%965; % Radius of Io's core
+R_CMB = 965.66; % Radius of Io's core
 
 % Interior_Model goes from core (1) to surface (n) with indices
 % Interior_Model values for the core
 Interior_Model(1).R0 = R_CMB; % CMB in km 
-Interior_Model(1).rho0 = 5157.96;%5150; % average density in kg m^-3
-Interior_Model(1).rho0_2 = 5157.96;%5150; % rho_2 in kg m^-3 (used for icy moons)
+Interior_Model(1).rho0 = 5157.96; % average density in kg m^-3
+Interior_Model(1).rho0_2 = 5157.96; % rho_2 in kg m^-3 (used for icy moons)
 
 % Interior_Model values for mantle/asthenosphere/crust layers
 % Number of layers on top of the core should be equal to Numerics.Nlayers
 % If the layer is elastic eta should be NaN
-Interior_Model(2).R0 = 1.1968718e+03;%1.19858e+03;%R_Io; % outer radius of this layer
+Interior_Model(2).R0 = 1.1968718e+03; % outer radius of this layer
 Interior_Model(2).rho0 = 3244; % density in kg m^-3
 Interior_Model(2).Ks0 = 200e9; % bulk modulus in Pa
 Interior_Model(2).mu0 = 60e9; % shear modulus in Pa
 Interior_Model(2).eta0 = 4.942e15; % viscosity in Pa s
-Interior_Model(2).nR = 2; % degree of lateral variations
-Interior_Model(2).mR = 0; % order of lateral variations
-Interior_Model(2).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(2).variable_eta_p = 50; %peak-to-peak variations of viscosity (in %)
-Interior_Model(2).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
+Interior_Model(2).eta_variable_p2p(:,1) = 2; % degree of lateral variations
+Interior_Model(2).eta_variable_p2p(:,2) = 0; % order of lateral variations
+Interior_Model(2).eta_variable_p2p(:,3) = 50; %peak-to-peak variations of viscosity (in %)
 
-Interior_Model(3).R0 = 1.4965908e+03;%1.49830e+03; % outer radius of this layer
+Interior_Model(3).R0 = 1.4965908e+03; % outer radius of this layer
 Interior_Model(3).rho0 = 3244; % density in kg m^-3
 Interior_Model(3).Ks0 = 200e9; % bulk modulus in Pa
 Interior_Model(3).mu0 = 60e9; % shear modulus in Pa
 Interior_Model(3).eta0 = 4.942e15; % viscosity in Pa s
-Interior_Model(3).nR = 2; % degree of lateral variations
-Interior_Model(3).mR = 0; % order of lateral variations
-Interior_Model(3).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(3).variable_eta_p = 50; %peak-to-peak variations of viscosity (in %)
-Interior_Model(3).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
+Interior_Model(3).eta_variable_p2p(:,1) = 2; % degree of lateral variations
+Interior_Model(3).eta_variable_p2p(:,2) = 0; % order of lateral variations
+Interior_Model(3).eta_variable_p2p(:,3) = 50; %peak-to-peak variations of viscosity (in %)
 
 Interior_Model(4).R0 = R_Io; % outer radius of this layer
 Interior_Model(4).rho0 = 3244; % density in kg m^-3
 Interior_Model(4).Ks0 = 200e9; % bulk modulus in Pa
 Interior_Model(4).mu0 = 60e9; % shear modulus in Pa
 Interior_Model(4).eta0 = 4.942e15; % viscosity in Pa s
-Interior_Model(4).nR = 2; % degree of lateral variations
-Interior_Model(4).mR = 0; % order of lateral variations
-Interior_Model(4).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(4).variable_eta_p = 50; %peak-to-peak variations of viscosity (in %)
-Interior_Model(4).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
+Interior_Model(4).eta_variable_p2p(:,1) = 2; % degree of lateral variations
+Interior_Model(4).eta_variable_p2p(:,2) = 0; % order of lateral variations
+Interior_Model(4).eta_variable_p2p(:,3) = 50; %peak-to-peak variations of viscosity (in %)
 
 % Set the rho difference such that the core can also represent an ocean
 Interior_Model(1).Delta_rho0 = Interior_Model(1).rho0_2 - Interior_Model(2).rho0; 
@@ -113,12 +107,13 @@ Forcing(3).F=1/8*sqrt(6/5);
 
 %% Convert the real lateral changes into complex spherical harmonics
 % Build a uniform model based on the values of the lateral varying one
-Interior_Model_Uni=Interior_Model;
+Interior_Model_Uni = Interior_Model;
 for ilayer=2:Numerics.Nlayers
-    Interior_Model_Uni(ilayer).variable_mu_p=0; 
-    Interior_Model_Uni(ilayer).variable_eta_p=0; 
-    Interior_Model_Uni(ilayer).variable_K_p=0; 
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,1) = 0; % degree of lateral variations
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,2) = 0; % order of lateral variations
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,3) = 0; % peak-to-peak variations of viscosity (in %) 
 end
+
 % Calculates the rheology that will be used. First computes the complex 
 % spherical harmonics and then performs a fourier transform to obtain the 
 % coefficients that will be used throughout the computations 
@@ -167,14 +162,14 @@ C2 = abs(old_e_s2.energy_s - new_e_s2);
 Max_diff_energy = max(C2(:));
 disp(['Maximum difference in the energy matrix: ' num2str(Max_diff_energy)])
 
-Mean_diff_energy = mean(C2(:),"omitmissing");
+Mean_diff_energy = mean(C2(:),"omitnan");
 disp(['Mean difference in the energy matrix: ' num2str(Mean_diff_energy)])
 
 C2_frac_diff = abs(C2./new_e_s2);
 Max_frac_diff_energy = max(C2_frac_diff(:));
 disp(['Maximum fractional difference in the energy matrix: ' num2str(Max_frac_diff_energy)])
 
-Mean_frac_diff_energy = mean(C2_frac_diff(:),"omitmissing");
+Mean_frac_diff_energy = mean(C2_frac_diff(:),"omitnan");
 disp(['Mean fractional difference in the energy matrix: ' num2str(Mean_frac_diff_energy)])
 
 y_ref = load("files/reference/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/y__2_0__4_0_per2__forc__2_0_per2.mat");
@@ -184,7 +179,7 @@ y_diff = abs(y_test - y_ref.y_sol);
 y_diff_max = max(y_diff(:));
 disp(['Maximum difference in the solution matrix: ' num2str(y_diff_max)])
 
-y_diff_mean = mean(y_diff(:),"omitmissing");
+y_diff_mean = mean(y_diff(:),"omitnan");
 disp(['Mean difference in the solution matrix: ' num2str(y_diff_mean)])
 
 k2_ref = y_ref.y_sol(end,8,2);
@@ -201,10 +196,10 @@ new_e_c_matrix_uni = Energy_Spectra_Uni.energy_contribution;
 C_uni = abs(old_e_c_matrix_uni.energy_contribution_s - new_e_c_matrix_uni);
 
 Max_diff_energy_contribution_uni = max(C_uni(:));
-A_uni_mean = mean(C_uni(:),"omitmissing");
+A_uni_mean = mean(C_uni(:),"omitnan");
 C_uni_diff = abs(C_uni./new_e_c_matrix_uni);
 A_uni_frac_max = max(C_uni_diff(:));
-A_uni_frac_mean = mean(C_uni_diff(:),"omitmissing");
+A_uni_frac_mean = mean(C_uni_diff(:),"omitnan");
 
 disp(' ')
 disp('Differences between UNIFORM bodies: ')
@@ -218,21 +213,21 @@ new_e_s_uni = Energy_Spectra_Uni.energy_integral;
 C1_uni = abs(old_e_s_uni.energy_s - new_e_s_uni);
 
 A1_uni = max(C1_uni(:));
-A1_uni_mean = mean(C1_uni(:),"omitmissing");
+A1_uni_mean = mean(C1_uni(:),"omitnan");
 C1_uni_diff = abs(C1_uni./new_e_s_uni);
 A1_uni_frac_max = max(C1_uni_diff(:));
-A1_uni_frac_mean = mean(C1_uni_diff(:),"omitmissing");
+A1_uni_frac_mean = mean(C1_uni_diff(:),"omitnan");
 
 Max_diff_energy_Uni = max(C1_uni(:));
 disp(['UNIFORM: Maximum difference in the energy matrix: ' num2str(Max_diff_energy_Uni)])
 
-Mean_diff_energy_uni = mean(C1_uni(:),"omitmissing");
+Mean_diff_energy_uni = mean(C1_uni(:),"omitnan");
 disp(['UNIFORM: Mean difference in the energy matrix: ' num2str(Mean_diff_energy_uni)])
 
 C1_frac_diff_uni = abs(C1_uni./new_e_s_uni);
 Max_frac_diff_energy_uni = max(C1_frac_diff_uni(:));
 disp(['UNIFORM: Maximum fractional difference in the energy matrix: ' num2str(Max_frac_diff_energy_uni)])
 
-Mean_frac_diff_energy_uni = mean(C1_frac_diff_uni(:),"omitmissing");
+Mean_frac_diff_energy_uni = mean(C1_frac_diff_uni(:),"omitnan");
 disp(['UNIFORM: Mean fractional difference in the energy matrix: ' num2str(Mean_frac_diff_energy_uni)])
 

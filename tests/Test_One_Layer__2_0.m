@@ -16,6 +16,7 @@ if ~isfolder(save_location)
     mkdir(save_location)
 end
 Startall = tic;
+
 %% Io non-dimensional
 % Values will be non-dimensionalised based on the outer layer such that all
 % radii are fractions. 
@@ -40,11 +41,9 @@ Interior_Model(2).rho0 = 3244; % density in kg m^-3
 Interior_Model(2).Ks0 = 200e9; % bulk modulus in Pa
 Interior_Model(2).mu0 = 60e9; % shear modulus in Pa
 Interior_Model(2).eta0 = 4.942e15; % viscosity in Pa s
-Interior_Model(2).nR = 2; % degree of lateral variations
-Interior_Model(2).mR = 0; % order of lateral variations
-Interior_Model(2).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(2).variable_eta_p = 50; %peak-to-peak variations of viscosity (in %)
-Interior_Model(2).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
+Interior_Model(2).eta_variable_p2p(:,1) = 2; % degree of lateral variations
+Interior_Model(2).eta_variable_p2p(:,2) = 0; % order of lateral variations
+Interior_Model(2).eta_variable_p2p(:,3) = 50; %peak-to-peak variations of viscosity (in %)
 
 % Set the rho difference such that the core can also represent an ocean
 Interior_Model(1).Delta_rho0 = Interior_Model(1).rho0_2 - Interior_Model(2).rho0; 
@@ -87,12 +86,13 @@ Forcing(3).F=1/8*sqrt(6/5);
 
 %% Convert the real lateral changes into complex spherical harmonics
 % Build a uniform model based on the values of the lateral varying one
-Interior_Model_Uni=Interior_Model;
+Interior_Model_Uni = Interior_Model;
 for ilayer=2:Numerics.Nlayers
-    Interior_Model_Uni(ilayer).variable_mu_p=0; 
-    Interior_Model_Uni(ilayer).variable_eta_p=0; 
-    Interior_Model_Uni(ilayer).variable_K_p=0; 
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,1) = 0; % degree of lateral variations
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,2) = 0; % order of lateral variations
+    Interior_Model_Uni(ilayer).eta_variable_p2p(:,3) = 0; % peak-to-peak variations of viscosity (in %) 
 end
+
 % Calculates the rheology that will be used. First computes the complex 
 % spherical harmonics and then performs a fourier transform to obtain the 
 % coefficients that will be used throughout the computations 
