@@ -23,7 +23,7 @@ index_old=1;
 order=order+1;
 
 % The modes array has the following structure:
-% 1: degree of mode, 2: order of mode, 3: some identifier, 4: the order
+% 1: degree of mode, 2: order of mode, 3: spheroidal or toroidal, 4: the order
 
 % Find all the modes using the next_coupling function
 while order<max_order+1
@@ -61,7 +61,7 @@ while order<max_order+1
 
     % Find potential other forcing mode
     ind_f = find(modes2(2:end,2)==Forcing.n & modes2(2:end,3)==Forcing.m);
-    if isempty(ind_f)==0
+    if isempty(ind_f)==0 && modes2(1,1)==0
         modes2(1,1) = modes2(ind_f(1)+1,1);
     end
 
@@ -96,10 +96,14 @@ modes = modes(ind,:);
 % Retrieve all the active modes
 modes2=unique(modes(:,[4, 1:3]),'rows');
 modes3=unique(modes(:,[1:2]),'rows');
-ind_f=find(modes2(2:end,2)==Forcing.n & modes2(2:end,3)==Forcing.m);
-if isempty(ind_f)==0
-    modes2(1,1)=modes2(ind_f(1)+1,1);
+ind_f = find(modes2(2:end,2)==Forcing.n & modes2(2:end,3)==Forcing.m);
+if isempty(ind_f)==0 && modes2(1,1)==0
+        modes2(1,1) = modes2(ind_f(1)+1,1);
 end
+%ind_f=find(modes2(2:end,2)==Forcing.n & modes2(2:end,3)==Forcing.m);
+% if isempty(ind_f)==0
+%     modes2(ind_f(1)+1,1)=modes2(ind_f(1)+1,1);
+% end
 
 active_modes = zeros(length(modes3),3);
 for j=1:length(modes3)

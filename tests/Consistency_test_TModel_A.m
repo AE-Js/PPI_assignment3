@@ -22,7 +22,7 @@ Startall = tic;
 % with caution!
 
 %% Loop stuff 
-Nbase_array = [5,10,20,50,100,200,500,1000,2000];
+Nbase_array = [5,10,20,50,100,200,500,1000];
 N_iteration = length(Nbase_array);
 k2_array = zeros(1,N_iteration);
 e00_array = zeros(1,N_iteration);
@@ -141,33 +141,23 @@ R_CMB = 965; % Radius of Io's core
 % Interior_Model goes from core (1) to surface (n) with indices
 % Interior_Model values for the core
 Interior_Model(1).R0 = R_CMB; % CMB in km 
-Interior_Model(1).rho0 = 5150;%5150; % average density in kg m^-3
-Interior_Model(1).rho0_2 = 5150;%5150; % rho_2 in kg m^-3 (used for icy moons)
+Interior_Model(1).rho0 = 5150; % average density in kg m^-3
+Interior_Model(1).rho0_2 = 5150; % rho_2 in kg m^-3 (used for icy moons)
 
 % Interior_Model values for mantle/asthenosphere/crust layers
 % Number of layers on top of the core should be equal to Numerics.Nlayers
 % If the layer is elastic eta should be NaN
-Interior_Model(2).R0 = 1591.6;%R_Io; % outer radius of this layer
+Interior_Model(2).R0 = 1591.6; % outer radius of this layer
 Interior_Model(2).rho0 = 3244; % density in kg m^-3
 Interior_Model(2).Ks0 = 200e12; % bulk modulus in Pa
 Interior_Model(2).mu0 = 6e10; % shear modulus in Pa
 Interior_Model(2).eta0 = 1e20; % viscosity in Pa s
-Interior_Model(2).nR = 1; % degree of lateral variations
-Interior_Model(2).mR = 0; % order of lateral variations
-Interior_Model(2).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(2).variable_eta_p = 0; %peak-to-peak variations of viscosity (in %)
-Interior_Model(2).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
 
 Interior_Model(3).R0 = 1791.6; % outer radius of this layer
 Interior_Model(3).rho0 = 3244; % density in kg m^-3
 Interior_Model(3).Ks0 = 200e12; % bulk modulus in Pa
 Interior_Model(3).mu0 = 7.8e5; % shear modulus in Pa
 Interior_Model(3).eta0 = 1e11; % viscosity in Pa s
-Interior_Model(3).nR = 1; % degree of lateral variations
-Interior_Model(3).mR = 0; % order of lateral variations
-Interior_Model(3).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(3).variable_eta_p = 0; %peak-to-peak variations of viscosity (in %)
-Interior_Model(3).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
 Interior_Model(3).mu_latlon = mu_start; % Full spectrum (struct) as input
 Interior_Model(3).eta_latlon = eta_start; % Full spectrum (struct) as input
 
@@ -176,11 +166,6 @@ Interior_Model(4).rho0 = 3244; % density in kg m^-3
 Interior_Model(4).Ks0 = 200e12; % bulk modulus in Pa
 Interior_Model(4).mu0 = 6.5e10; % shear modulus in Pa
 Interior_Model(4).eta0 = 1e23; % viscosity in Pa s
-Interior_Model(4).nR = 1; % degree of lateral variations
-Interior_Model(4).mR = 0; % order of lateral variations
-Interior_Model(4).variable_mu_p = 0; %peak-to-peak variations of shear modulus (in %)
-Interior_Model(4).variable_eta_p = 0; %peak-to-peak variations of viscosity (in %)
-Interior_Model(4).variable_K_p = 0; %peak-to-peak variations of bulk modulus (in %)
 
 % Set the rho difference such that the core can also represent an ocean
 Interior_Model(1).Delta_rho0 = Interior_Model(1).rho0_2 - Interior_Model(2).rho0; 
@@ -229,11 +214,6 @@ Forcing(3).F=1/8*sqrt(6/5);
 % coefficients that will be used throughout the computations 
 Interior_Model_Uni = Interior_Model;
 for ilayer=2:Numerics.Nlayers
-    Interior_Model_Uni(ilayer).nR=1; 
-    Interior_Model_Uni(ilayer).mR=0; 
-    Interior_Model_Uni(ilayer).variable_mu_p=0; 
-    Interior_Model_Uni(ilayer).variable_eta_p=0; 
-    Interior_Model_Uni(ilayer).variable_K_p=0; 
     if isfield(Interior_Model_Uni(ilayer), "mu_latlon")
         Interior_Model_Uni = rmfield(Interior_Model_Uni, "mu_latlon");
     end
@@ -303,7 +283,7 @@ disp(["Time spent on all calculations" num2str(toc(Startall)) " s"])
 end
 %%
 set(0,'defaulttextInterpreter','latex') 
-fig = figure(1)
+fig = figure(1);
 % fontsize(fig, 24, 'points')
 ratio_Uni_variable = real(abs(e_01_Uni - e_02_Uni)) ./ e_01_Uni * 100;
 ratio_variable = real(abs(e_01 - e_02)) ./ e_01 * 100;
