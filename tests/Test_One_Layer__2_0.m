@@ -125,7 +125,7 @@ end
 disp(["Time spent on all calculations" num2str(toc(Startall)) " s"])
 
 %% Check consistency with previous results/reference files, Non-Uniform
-old_e_c_matrix2 = load("files/reference/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/Energy_contribution_matrix__2_0__4_0__forc__2_0__2_-2__2_2__N__12__2.mat");
+old_e_c_matrix2 = load("data/tests/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/Energy_contribution_matrix__2_0__4_0__forc__2_0__2_-2__2_2__N__12__2.mat");
 new_e_c_matrix2 = Energy_Spectra.energy_contribution;
 
 C = abs(old_e_c_matrix2.energy_contribution_s - new_e_c_matrix2);
@@ -133,7 +133,7 @@ C = abs(old_e_c_matrix2.energy_contribution_s - new_e_c_matrix2);
 Max_diff_energy_contribution = max(C(:));
 disp(['Maximum difference in the energy contribution matrix: ' num2str(Max_diff_energy_contribution)])
 
-old_e_s2 = load("files/reference/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/Energy_s__2_0__4_0__forc__2_0__2_-2__2_2__N__12__2.mat");
+old_e_s2 = load("data/tests/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/Energy_s__2_0__4_0__forc__2_0__2_-2__2_2__N__12__2.mat");
 new_e_s2 = Energy_Spectra.energy_integral;
 
 C2 = abs(old_e_s2.energy_s - new_e_s2);
@@ -151,7 +151,7 @@ disp(['Maximum fractional difference in the energy matrix: ' num2str(Max_frac_di
 Mean_frac_diff_energy = mean(C2_frac_diff(:),"omitnan");
 disp(['Mean fractional difference in the energy matrix: ' num2str(Mean_frac_diff_energy)])
 
-y_ref = load("files/reference/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/y__2_0__4_0_per2__forc__2_0_per2.mat");
+y_ref = load("data/tests/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/y__2_0__4_0_per2__forc__2_0_per2.mat");
 y_test = y(1).y; 
 
 y_diff = abs(y_test - y_ref.y_sol);
@@ -178,7 +178,7 @@ disp(['Percentage difference in k2: ' num2str(k2_im_diff)])
 
 
 %% Uniform solution
-old_e_c_matrix_uni = load("files/reference/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/Energy_contribution_matrix__0_0__forc__2_0__2_-2__2_2__N__12__2.mat");
+old_e_c_matrix_uni = load("data/tests/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/Energy_contribution_matrix__0_0__forc__2_0__2_-2__2_2__N__12__2.mat");
 new_e_c_matrix_uni = Energy_Spectra_Uni.energy_contribution;
 
 C_uni = abs(old_e_c_matrix_uni.energy_contribution_s - new_e_c_matrix_uni);
@@ -196,7 +196,7 @@ disp(['UNIFORM: Mean difference in the energy contribution matrix: ' num2str(A_u
 disp(['UNIFORM: Maximum fractional difference in the energy contribution matrix: ' num2str(A_uni_frac_max)])
 disp(['UNIFORM: Mean fractional difference in the energy contribution matrix: ' num2str(A_uni_frac_mean)])
 
-old_e_s_uni = load("files/reference/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/Energy_s__0_0__forc__2_0__2_-2__2_2__N__12__2.mat");
+old_e_s_uni = load("data/tests/nr2_mr0_rheoper2_per2_nE12_mup0_kp0_etap50/Energy_s__0_0__forc__2_0__2_-2__2_2__N__12__2.mat");
 new_e_s_uni = Energy_Spectra_Uni.energy_integral;
 C1_uni = abs(old_e_s_uni.energy_s - new_e_s_uni);
 
