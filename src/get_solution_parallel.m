@@ -343,8 +343,8 @@ for ii=2:Numerics.Nlayers
     end
 end
 
-% Clear a big matrix from memory
-clear Couplings
+% Clear some big matrices from memory
+clear Couplings rK_arr gK_arr dgK_arr Delta_r_arr
 
 if verbose==1
     disp(['Time Spent computing the propagation matrix ' num2str(toc) ' s'])
@@ -400,7 +400,7 @@ for k=2:Numerics.Nr+1
 end
 
 % Clear a big matrix from memory
-clear Aprop_arr
+clear AProp_arr y_old
 
 % Reset some necessary values
 rhoK = Interior_Model(end).rho; % Density of the end layer
@@ -510,10 +510,13 @@ end
 if verbose==1
     tic
 end
-C=B\B2;
+C = B\B2;
 if verbose==1
     disp(['Time Spent calculating the coefficients ' num2str(toc) ' s'])
 end
+
+% Clear some big matrices from memory
+clear B B2
 
 %% ASSEMBLE SOLUTION
 if verbose==1
