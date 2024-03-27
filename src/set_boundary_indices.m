@@ -69,42 +69,41 @@ if Numerics.Nlayers > 2
         end
         Numerics.BCindices = ind_boundary;
 
-    elseif Numerics.method == "variable"
-        Numerics.Nrlayer = [0, floor(Numerics.Nrbase), floor(Numerics.Nrbase), floor(Numerics.Nrbase)];
-        Numerics.Nr = sum(Numerics.Nrlayer); % Total number of radial points
-
+    elseif Numerics.method == "variable" %updated by Marc 
+        Numerics.Nrlayer(1)=0; 
         % Set boundary indices
-        for ilayer=2:Numerics.Nlayers-1
+        for ilayer=2:Numerics.Nlayers
             if ilayer == 2
-                ind_boundary = Numerics.Nrlayer(ilayer);
+                Numerics.Nrlayer(ilayer)=Numerics.Nrbase;
+                Numerics.BCindices(1)= 1+Numerics.Nrlayer(ilayer);
             else
-                next_boundary = sum(Numerics.Nrlayer(1:(ilayer)));
-                ind_boundary = [ind_boundary next_boundary];
+                Numerics.Nrlayer(ilayer)=Numerics.Nrbase;
+                Numerics.BCindices(ilayer-1)=1+sum(Numerics.Nrlayer(1:(ilayer)));
             end
         end
-        Numerics.BCindices = ind_boundary;
-
+        Numerics.Nr = sum(Numerics.Nrlayer); % Total number of radial points, 
     elseif Numerics.method == "fixed"
         delta_r = (Interior_Model(end).R0-Interior_Model(1).R0)/Numerics.Nrbase;
-        for ilayer=2:Numerics.Nlayers-1
+        for ilayer=2:Numerics.Nlayers
             if ilayer == 2
-                ind_boundary = floor((Interior_Model(ilayer).R0-Interior_Model(1).R0)/delta_r);
-                Interior_Model(ilayer).R0 = Interior_Model(1).R0 + ind_boundary*delta_r;
-                temp_Nrlayer = [0, ind_boundary(1)];
+                Numerics.Nrlayer(ilayer)=floor((Interior_Model(ilayer).R0-Interior_Model(1).R0)/delta_r);
+                Numerics.BCindices(1)=Numerics.Nrlayer(ilayer)+1; 
+                Interior_Model(ilayer).R0=Interior_Model(1).R0 + Numerics.Nrlayer(ilayer)*delta_r;
+            elseif ilayer==Numerics.Nlayers
+                Numerics.Nrlayer(ilayer)=Numerics.Nrbase-sum(Numerics.Nrlayer(1:(ilayer-1)));
+                Numerics.BCindices(ilayer-1)=1+sum(Numerics.Nrlayer(1:(ilayer)));
+                Interior_Model(ilayer).R0 = Interior_Model(ilayer-1).R0+Numerics.Nrlayer(ilayer)*delta_r;
             else
-                temp_boundary = floor((Interior_Model(ilayer).R0-Interior_Model(1).R0)/delta_r);
-                temp_Nrlayer = [temp_Nrlayer temp_boundary-ind_boundary(end)];
-                ind_boundary = [ind_boundary temp_boundary];   
-                Interior_Model(ilayer).R0 = Interior_Model(1).R0 + temp_boundary*delta_r;
+                Numerics.Nrlayer(ilayer)=floor((Interior_Model(ilayer).R0-Interior_Model(ilayer-1).R0)/delta_r);
+                Numerics.BCindices(ilayer-1)=1+sum(Numerics.Nrlayer(1:(ilayer)));  
+                Interior_Model(ilayer).R0 = Interior_Model(ilayer-1).R0+Numerics.Nrlayer(ilayer)*delta_r;               
             end
         end
-        
-        Numerics.Nrlayer = [temp_Nrlayer Numerics.Nrbase-ind_boundary(end)];
         Numerics.Nr = sum(Numerics.Nrlayer);
         if ~(Numerics.Nrbase == Numerics.Nr)
             error('Error. \nNumerics.Nr is not equal to Numerics.Nrbase')
         end
-        Numerics.BCindices = ind_boundary;
+        %Numerics.BCindices = ind_boundary;
     
     % Provide a way to manual set the number of points in each layer
     elseif Numerics.method == "manual"

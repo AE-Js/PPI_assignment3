@@ -4,11 +4,7 @@
 %% INPUT 
 % Interior_Model: Structure containing the interior model information
         %Interior_Model(ilayer).R0: radius
-            %R0(1) core radius (solid+liquid core)
-            %R0(2) surface radius
         %Interior_Model(ilayer).rho0: layers density        
-            %rho0(1) density of interior layer (solid+liquid core)
-            %rho0(2) density of outermost solid layer
         %Interior_Model(ilayer).Delta_rho0: Density difference between the liquid core and overlying solid layer. If not provided it is computed assuming that the two innermost layers have rho0(1).
         %Interior_Model(ilayer).mu0: shear modulus of the the outermost layer
         %Interior_Model(ilayer).Ks0: bulk modulus of the outermost layer
@@ -71,12 +67,12 @@
             % y(radial_point,1,mode): r radial position
             % y(radial_point,2,mode): U radial displacement
             % y(radial_point,3,mode): V tangential displacement
-            % y(radial_point,4,mode): R normal stress
-            % y(radial_point,5,mode): S tangential stress
-            % y(radial_point,6,mode): \phi gravitational potential
-            % y(radial_point,7,mode): \dot\phi potential stress
-            % y(radial_point,8,mode): W toroidal displacement
-            % y(radial_point,9,mode): T toroidal stress        
+            % y(radial_point,4,mode): W toroidal displacement 
+            % y(radial_point,5,mode): R radial stress
+            % y(radial_point,6,mode): S tangential stress
+            % y(radial_point,7,mode): T toroidal stress
+            % y(radial_point,8,mode): \phi toroidal potential
+            % y(radial_point,9,mode): \partial_r\phi potentia derivative       
             % y(radial_point,10,mode): u_{n,n-1}
             % y(radial_point,11,mode): u_{n,n}
             % y(radial_point,12,mode): u_{n,n+1}
@@ -264,18 +260,34 @@ Nsol=length(Couplings.n_s);
 
 %% PRINT MODEL INFORMATION IN SCREEN 
 if verbose==1
-    disp('------------- INTERIOR MODEL -----------')
+    cprintf('*black','------------- INTERIOR MODEL ----------- \n')
     disp('AVERAGE PROPERTIES (dimensional)')
     disp(['Layer#     R[m]    rho[kg.m^{-3}]    mu[Pa]    K[Pa]    eta[Pa.s]' ])
     disp(['1    ' num2str(Interior_Model(1).R0,'%10.5e') '    ' num2str(Interior_Model(1).rho0,'%10.5e') '    0'  '    -'   ])
     for ilayer=2:Numerics.Nlayers
-        disp([num2str(ilayer) '    ' num2str(Interior_Model(ilayer).R0,'%10.5e') '    ' num2str(Interior_Model(ilayer).rho0,'%10.5e') '    ' num2str(Interior_Model(ilayer).mu0,'%10.5e')  '    ' num2str(Interior_Model(ilayer).Ks0,'%10.5e') ' ' num2str(Interior_Model(ilayer).eta0,'%10.5e')   ])
+        if isfield(Interior_Model,'ocean')
+            if Interior_Model(ilayer).ocean
+                cprintf('blue',[num2str(ilayer) '    ' num2str(Interior_Model(ilayer).R0,'%10.5e') '    ' num2str(Interior_Model(ilayer).rho0,'%10.5e') '    ' num2str(Interior_Model(ilayer).mu0,'%10.5e')  '    ' num2str(Interior_Model(ilayer).Ks0,'%10.5e') ' ' num2str(Interior_Model(ilayer).eta0,'%10.5e') '\n'   ])
+            else
+                disp([num2str(ilayer) '    ' num2str(Interior_Model(ilayer).R0,'%10.5e') '    ' num2str(Interior_Model(ilayer).rho0,'%10.5e') '    ' num2str(Interior_Model(ilayer).mu0,'%10.5e')  '    ' num2str(Interior_Model(ilayer).Ks0,'%10.5e') ' ' num2str(Interior_Model(ilayer).eta0,'%10.5e')   ])
+            end
+        else
+            disp([num2str(ilayer) '    ' num2str(Interior_Model(ilayer).R0,'%10.5e') '    ' num2str(Interior_Model(ilayer).rho0,'%10.5e') '    ' num2str(Interior_Model(ilayer).mu0,'%10.5e')  '    ' num2str(Interior_Model(ilayer).Ks0,'%10.5e') ' ' num2str(Interior_Model(ilayer).eta0,'%10.5e')   ])
+        end       
     end
     disp('AVERAGE PROPERTIES (non-dimensional)')
     disp(['Layer#     R[-]    rho[-]    mu[-]    K [-]     eta[-]' ])
     disp(['1    ' num2str(Interior_Model(1).R) '    ' num2str(Interior_Model(1).rho) '    0'  '    -'   ])
     for ilayer=2:Numerics.Nlayers
-        disp([num2str(ilayer) '    ' num2str(Interior_Model(ilayer).R) '    ' num2str(Interior_Model(ilayer).rho) '    ' num2str(Interior_Model(ilayer).mu)  '    ' num2str(Interior_Model(ilayer).Ks) ' ' num2str(Interior_Model(ilayer).eta)   ])
+        if isfield(Interior_Model,'ocean')
+            if Interior_Model(ilayer).ocean
+                cprintf('blue',[num2str(ilayer) '    ' num2str(Interior_Model(ilayer).R) '    ' num2str(Interior_Model(ilayer).rho) '    ' num2str(Interior_Model(ilayer).mu)  '    ' num2str(Interior_Model(ilayer).Ks) ' ' num2str(Interior_Model(ilayer).eta)  '\n'  ])
+            else
+                disp([num2str(ilayer) '    ' num2str(Interior_Model(ilayer).R) '    ' num2str(Interior_Model(ilayer).rho) '    ' num2str(Interior_Model(ilayer).mu)  '    ' num2str(Interior_Model(ilayer).Ks) ' ' num2str(Interior_Model(ilayer).eta)   ])
+            end
+        else
+            disp([num2str(ilayer) '    ' num2str(Interior_Model(ilayer).R) '    ' num2str(Interior_Model(ilayer).rho) '    ' num2str(Interior_Model(ilayer).mu)  '    ' num2str(Interior_Model(ilayer).Ks) ' ' num2str(Interior_Model(ilayer).eta)   ])
+        end
     end
     disp('RHEOLOGY  VARIATIONS')
     disp('Shear Modulus')
@@ -326,14 +338,14 @@ if verbose==1
         end
     end
     disp(' ')
-    disp('----------- FORCING ----------')
+    cprintf('*black','----------- FORCING ----------\n')
     disp('TIDAL POTENTIAL')
     disp('Period [s]')
     disp(num2str(Forcing.Td,'%10.5e'))
     disp('(n,m)')
     disp(['(' num2str(Forcing.n) ',' num2str(Forcing.m) ')'])
     disp(' ')
-    disp('-----------  RESPONSE SPECTRUM ----------- ')
+    cprintf('*black','-----------  RESPONSE SPECTRUM -----------\n')
     for j=0:Numerics.perturbation_order
     index_order=find(Couplings.order==j);
     str_h=[];
@@ -349,7 +361,7 @@ if verbose==1
     disp(str_h)
     end
     end
-    disp('----------- NUMERICAL INFORMATION ----------')
+    cprintf('*black','----------- NUMERICAL INFORMATION ----------\n')
     disp(['Number of Modes ' num2str(Nsol)])
     disp(['Radial Points '  num2str(Numerics.Nr)])
 end
@@ -456,8 +468,8 @@ end
 if verbose==1
     Nmodes=length(Couplings.n_s);
     disp('#####################################')
-    disp('---------- RESPONSE ----------------')
-    disp('k2 Love numbers')
+    cprintf('*black','---------- RESPONSE ----------------\n')
+    disp('k Love numbers')
     disp('(n,m)           k_n^m')
     for i=1:Nmodes
         if Couplings.n_s(i)==Forcing.n && Couplings.m_s(i)==Forcing.m
@@ -465,6 +477,12 @@ if verbose==1
         else
             k2=y_sol(end,8,i);
         end
+        disp(['(' num2str(Couplings.n_s(i)) ',' num2str(Couplings.m_s(i)) ')           '  num2str(k2,'%10.5e')   ])
+    end
+    disp('h Love numbers')
+    disp('(n,m)           h_n^m')
+    for i=1:Nmodes
+        k2=-Interior_Model(end).gs*y_sol(end,2,i);
         disp(['(' num2str(Couplings.n_s(i)) ',' num2str(Couplings.m_s(i)) ')           '  num2str(k2,'%10.5e')   ])
     end
 end
