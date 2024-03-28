@@ -96,8 +96,7 @@
             % Interior_Model(ilayer).mu_latlon_set_internal: map of the shear modulus perturbations when provided as format (1) or (2), set internally
             % Interior_Model(ilayer).eta_latlon_set_internal: map of the viscosity perturbations when provided as format (1) or (2), set internally
             % Interior_Model(ilayer).mu_stokes_set_internal: spectral decomposition of the provided shear modulus map, only computed with a map as input
-            % Interior_Model(ilayer).eta_stokes_set_internal: spectral decomposition of the provided viscosity map, only computed with a map as input
-   
+            % Interior_Model(ilayer).eta_stokes_set_internal: spectral decomposition of the provided viscosity map, only computed with a map as input   
 
         % ilayer=1 corresponds to the core, which in case of an icy moon, includes both the solid and liquid later. 
         % for ilayer=1, the shear and bulk modulus are not required
@@ -279,14 +278,13 @@ for ilayer=1:Numerics.Nlayers
         Interior_Model(ilayer).Delta_rho = Interior_Model(ilayer).Delta_rho0/Interior_Model(end).rho0;
         Interior_Model(ilayer).Gg0 = G; % G
         Interior_Model(ilayer).Gg  = Gg; % Non-dimensionalised G  
-
         % Build the (normalized) average density of the body and compute the gravitational acceleration
         M  = 4/3*pi*Interior_Model(ilayer).rho*Interior_Model(ilayer).R^3;
         M0 = 4/3*pi*Interior_Model(ilayer).rho0*Interior_Model(ilayer).R0^3; 
         Interior_Model(ilayer).rho_av0 = M0/(4/3*pi*Interior_Model(ilayer).R0^3);
         Interior_Model(ilayer).rho_av = M/(4/3*pi*Interior_Model(ilayer).R^3);
         Interior_Model(ilayer).gs0 = Interior_Model(ilayer).Gg0*M0/(Interior_Model(ilayer).R0^2)*1e3; %1e3 bc radius is in km
-        Interior_Model(ilayer).gs = Interior_Model(ilayer).Gg*M;
+        Interior_Model(ilayer).gs = Interior_Model(ilayer).Gg*M/(Interior_Model(ilayer).R^2);
     else
         %non-dimensionalise 
         Interior_Model(ilayer).R = Interior_Model(ilayer).R0/Interior_Model(end).R0;
@@ -303,7 +301,7 @@ for ilayer=1:Numerics.Nlayers
             Interior_Model(ilayer).MaxTime = 2*pi*Interior_Model(ilayer).eta0/Interior_Model(ilayer).mu0/Forcing(1).Td;
             Interior_Model(ilayer).elastic = 0;
         else %the layer is elastic
-            disp(['Viscosity for layer ' num2str(ilayer) ' not provided, I will assume the layer is elastic'])
+            cprintf([1,0.5,0],['Viscosity for layer ' num2str(ilayer) ' not provided, I will assume the layer is elastic \n'])
             Interior_Model(ilayer).eta = NaN;
             Interior_Model(ilayer).MaxTime = NaN; 
             Interior_Model(ilayer).elastic = 1;
@@ -312,23 +310,27 @@ for ilayer=1:Numerics.Nlayers
         if ~isempty(Interior_Model(ilayer).Ks0)
             Interior_Model(ilayer).Ks = Interior_Model(ilayer).Ks0/Interior_Model(end).mu0;
         else
-            disp(['Bulk modulus for layer ' num2str(ilayer) ' not provided, I will assume the layer is incompressible'])
+            cprintf([1,0.5,0],['Bulk modulus for layer ' num2str(ilayer) ' not provided, I will assume the layer is incompressible \n'])
             Interior_Model(ilayer).Ks0=1e5*Interior_Model(end).mu0;
             Interior_Model(ilayer).Ks = Interior_Model(ilayer).Ks0/Interior_Model(end).mu0;
         end
+        % check if this is an ocean layer 
+        if isfield(Interior_Model,'ocean')
+            if Interior_Model(ilayer).ocean==1
+                cprintf('cyan',['Layer ' num2str(ilayer) ' is an ocean layer \n'])
+            end
+        end
         Interior_Model(ilayer).Gg0 = G; % G
         Interior_Model(ilayer).Gg  = Gg; % Non-dimensionalised G
-
         % Density difference with layer below taken such that it should be positive
         Interior_Model(ilayer).Delta_rho = Interior_Model(ilayer-1).rho-Interior_Model(ilayer).rho; 
-
         % Add mass of the layer to obtain the (normalized) average density
         M0 = M0 + 4/3*pi*Interior_Model(ilayer).rho0*(Interior_Model(ilayer).R0^3-Interior_Model(ilayer-1).R0^3);
         M  = M + 4/3*pi*Interior_Model(ilayer).rho*(Interior_Model(ilayer).R^3-Interior_Model(ilayer-1).R^3);
         Interior_Model(ilayer).rho_av0 = M0/(4/3*pi*Interior_Model(ilayer).R0^3);
         Interior_Model(ilayer).rho_av  = M/(4/3*pi*Interior_Model(ilayer).R^3);
         Interior_Model(ilayer).gs0 = Interior_Model(ilayer).Gg0*M0/(Interior_Model(ilayer).R0^2)*1e3; %1e3 bc radius is in km
-        Interior_Model(ilayer).gs = Interior_Model(ilayer).Gg*M;
+        Interior_Model(ilayer).gs = Interior_Model(ilayer).Gg*M/(Interior_Model(ilayer).R^2);
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%%%% LATERAL VARIATIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -396,7 +398,7 @@ for ilayer=1:Numerics.Nlayers
                 end
                 ind=find(mR==-mR(i)); 
                 if isempty(ind)==1
-                    disp("Be careful! Lateral variations field is not real, I will add a -m component to make it real. ")
+                    cprintf([1,0.5,0],"Be careful! Lateral variations field is not real, I will add a -m component to make it real. \n")
                     % shear modulus 
                     Interior_Model(ilayer).mu_variable(end+1,1)=nR(i); 
                     Interior_Model(ilayer).mu_variable(end+1,2)=-mR(i); 
@@ -595,7 +597,7 @@ for ilayer=1:Numerics.Nlayers
         % No lateral variations provided so the layer is assumed to be
         % spherically-symmetric
         else
-            disp('No lateral variations provided, I will assume the layer is spherically-symmetric')
+            cprintf([1,0.5,0],['No lateral variations provided for layer ' num2str(ilayer) ', I will assume the layer is spherically-symmetric \n'])
             Interior_Model(ilayer).eta_variable=[0 0 0]; 
             Interior_Model(ilayer).mu_variable=[0 0 0]; 
             Interior_Model(ilayer).K_variable=[0 0 0]; 
