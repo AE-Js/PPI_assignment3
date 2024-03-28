@@ -127,7 +127,7 @@ end
 % Set the indice of the first boundary layer if applicable
 blayer_ind = 0; % Set default value
 iblayer = 1; % First indices of Numerics.BCindices
-k_corr = 0; % Indices correction
+k_corr = 1; % Indices correction %0
 if ~isempty(Numerics.BCindices)
     % Add 1 to make sure that the Boundary is at the previous node
     blayer_ind = Numerics.BCindices(iblayer) + 1;
@@ -225,22 +225,22 @@ for k=2:Numerics.Nr+1
         % Update density 
         rhoK = Interior_Model(ilayer).rho;
 
+        % Update delta r
+        Delta_r = (Interior_Model(ilayer).R - Interior_Model(ilayer-1).R)/(Numerics.Nrlayer(ilayer));
+
         % Update radial points vector before new Delta_r and Rin
-        r(k) = Rin + ((k-k_corr)-1)*Delta_r;
+        r(k) = Rin + (k-k_corr)*Delta_r;
 
         % Update mass and radius of the encapsulated sphere
         Min = Min + 4/3*pi*Interior_Model(ilayer-1).rho*(Interior_Model(ilayer-1).R^3 - Interior_Model(ilayer-2).R^3);
         Rin = Interior_Model(ilayer-1).R;
-
-        % Update delta r
-        Delta_r = (Interior_Model(ilayer).R - Interior_Model(ilayer-1).R)/(Numerics.Nrlayer(ilayer));
 
         % Update indices correction, needed to 
         k_corr = Numerics.BCindices(iblayer-1);
 
     else
         % Update radial points vector
-        r(k) = Rin + ((k-k_corr)-1)*Delta_r;
+        r(k) = Rin + (k-k_corr)*Delta_r;
     end
     
     % Save these values in an array for later
@@ -251,37 +251,37 @@ for k=2:Numerics.Nr+1
     Delta_r_arr(k) = Delta_r;
     
     %%%%%%%%%%% Step 1
-    rK = Rin + ((k-k_corr)-2)*Delta_r;
+    rK = Rin + ((k-k_corr)-1)*Delta_r;
     rK_arr(1,k) = rK;
     gK_arr(1,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
     dgK_arr(1,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
 
     %%%%%%%%%%% Step 2
-    rK = Rin + ((k-k_corr)-2)*Delta_r + AA2*Delta_r; 
+    rK = Rin + ((k-k_corr)-1)*Delta_r + AA2*Delta_r; 
     rK_arr(2,k) = rK; 
     gK_arr(2,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
     dgK_arr(2,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
 
     %%%%%%%%%%% Step 3
-    rK = Rin + ((k-k_corr)-2)*Delta_r + AA3*Delta_r; 
+    rK = Rin + ((k-k_corr)-1)*Delta_r + AA3*Delta_r; 
     rK_arr(3,k) = rK; 
     gK_arr(3,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
     dgK_arr(3,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
 
     %%%%%%%%%%% Step 4
-    rK = Rin + ((k-k_corr)-2)*Delta_r + AA4*Delta_r; 
+    rK = Rin + ((k-k_corr)-1)*Delta_r + AA4*Delta_r; 
     rK_arr(4,k) = rK; 
     gK_arr(4,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
     dgK_arr(4,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
 
     %%%%%%%%%%% Step 5
-    rK = Rin + ((k-k_corr)-2)*Delta_r + AA5*Delta_r;
+    rK = Rin + ((k-k_corr)-1)*Delta_r + AA5*Delta_r;
     rK_arr(5,k) = rK; 
     gK_arr(5,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
     dgK_arr(5,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
 
     %%%%%%%%%%% Step 6
-    rK = Rin + ((k-k_corr)-2)*Delta_r + AA6*Delta_r; 
+    rK = Rin + ((k-k_corr)-1)*Delta_r + AA6*Delta_r; 
     rK_arr(6,k) = rK; 
     gK_arr(6,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
     dgK_arr(6,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
@@ -387,8 +387,8 @@ for k=2:Numerics.Nr+1
         end
 
         % Apply the effect of the density discontinuity
-        cont_condition(8*(0:(Nmodes-1))+8,8*(0:(Nmodes-1))+8,1) = ...
-            4*pi*Gg*rho_diff*y(8*(0:(Nmodes-1))+1,8*(0:(Nmodes-1))+1,k-1);
+        cont_condition(8*(0:(Nmodes-1))+8,:,1) = ...
+            4*pi*Gg*rho_diff*y(8*(0:(Nmodes-1))+1,:,k-1);
         y_old = y(:,:,k-1) - cont_condition;
     else
         % Update the solution at the previous node
