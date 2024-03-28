@@ -1508,6 +1508,54 @@ end
 
 end
 %% 
+% function Aprop=get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg_0,Gg)
+% %% (1) Assemble matrix
+%     % rheology equation 
+%     Adotx1=sparse(3*Nmodes,8*Nmodes);
+%     Ax1=sparse(3*Nmodes,8*Nmodes);
+%     Adotx1(:,1:3*Nmodes)=A4*A1*A3_inv; %\dot{U}
+%     Ax1(:,1:3*Nmodes)=-A4*A2*A3_inv/rK;% U
+%     Ax1(:,3*Nmodes+(1:3*Nmodes))=A13;% \Sigma
+%     % for uniform model this looks OK. 
+%     % momentum equations 
+%     Adotx2=sparse(3*Nmodes,8*Nmodes);
+%     Ax2=sparse(3*Nmodes,8*Nmodes);
+%     Adotx2(:,1:3*Nmodes)=-A5*A1*A3_inv/rK+A6;% \dot{U}
+%     Adotx2(:,3*Nmodes+(1:3*Nmodes))=A13;% \dot{\Sigma{U}}
+%     Ax2(:,1:3*Nmodes)=A5*A2*A3_inv/rK^2+gK/rK*A71+dgK*A72;% U
+%     Ax2(:,6*Nmodes+(1:2*Nmodes))=A81+A82/rK;% \Phi
+%     % for uniform model, this looks OK 
+%     % Poisson equation 
+%     Adotx3=sparse(2*Nmodes,8*Nmodes);
+%     Ax3=sparse(2*Nmodes,8*Nmodes);
+%     Adotx3(:,1:3*Nmodes)=-A12; %\dot{U}
+%     Adotx3(:,6*Nmodes+(1:2*Nmodes))=A9; %\dot{\Phi}
+%     Ax3(:,1:3*Nmodes)=A11/rK; % U
+%     Ax3(:,6*Nmodes+(1:2*Nmodes))=A100+A101/rK+A102/rK^2; % \Phi
+%     % combine matrices
+%     Adotx=[Adotx1; Adotx2; Adotx3];
+%     Ax=[Ax1; Ax2; Ax3];
+%     if deg_0==1
+%         Ax([2,2+3*Nmodes],:)=0; 
+%         Ax([3,3+3*Nmodes],:)=0;
+%         Adotx([2,2+3*Nmodes],:)=0;
+%         Adotx([3,3+3*Nmodes],:)=0;
+%         Adotx(2+3*Nmodes,2+3*Nmodes)=1; 
+%         Adotx(3+3*Nmodes,3+3*Nmodes)=1; 
+%         Adotx(2,2)=1; 
+%         Adotx(3,3)=1;
+%         Ax(2,2)=1; 
+%         Ax(3,3)=1; 
+%         Ax(2+3*Nmodes,2+3*Nmodes)=1; 
+%         Ax(3+3*Nmodes,3+3*Nmodes)=1;
+%         %test
+%         Ax(6*Nmodes+1,:)=0;
+%         Ax(6*Nmodes+1,1)=-4*pi*Gg;
+%     end
+%     %% (2) Propgate solution 
+%     Aprop=Adotx\Ax;
+% end
+
 function Aprop=get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg_0,Gg)
 %% (1) Assemble matrix
     % rheology equation 

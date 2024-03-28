@@ -70,7 +70,7 @@ ma_arr = Couplings.m_s;
 % Check whether it is possible to use parfor (can't be used when the
 % solution also uses it)
 if Numerics.parallel_gen == 1 && Numerics.parallel_sol == 0
-    parfor ireo=1:Nreo
+    parfor (ireo=1:Nreo,10) % REMOVE THIS
         nb=nb_arr(ireo);
         mb=mb_arr(ireo);
         for imod1=1:Nsol
