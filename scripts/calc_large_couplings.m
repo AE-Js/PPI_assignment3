@@ -5,9 +5,9 @@ clc
 %% Set relevant structs
 % Set the number of rheology modes, the specific forcing and 
 % the perturbation order and are taken into account. 
-Numerics.Nrheo_max = 20;
+Numerics.Nrheo_max = 24;
 Forcing.n = 2;
-Forcing.m = 2;
+Forcing.m = 0;
 Numerics.perturbation_order = 1;
 Numerics.parallel_sol = 0;
 Numerics.parallel_gen = 1;
