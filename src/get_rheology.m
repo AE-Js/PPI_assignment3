@@ -311,7 +311,7 @@ for ilayer=1:Numerics.Nlayers
             Interior_Model(ilayer).Ks = Interior_Model(ilayer).Ks0/Interior_Model(end).mu0;
         else
             cprintf([1,0.5,0],['Bulk modulus for layer ' num2str(ilayer) ' not provided, I will assume the layer is incompressible \n'])
-            Interior_Model(ilayer).Ks0=1e5*Interior_Model(end).mu0;
+            Interior_Model(ilayer).Ks0=1e7*Interior_Model(end).mu0;
             Interior_Model(ilayer).Ks = Interior_Model(ilayer).Ks0/Interior_Model(end).mu0;
         end
         % check if this is an ocean layer 
