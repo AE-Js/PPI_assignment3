@@ -553,7 +553,6 @@ for ilayer=1:Numerics.Nlayers
                     Interior_Model(ilayer).eta_variable(end,3)=1i*sqrt(2)/2*Interior_Model(ilayer).eta_variable_p2p(i,3)/100/Delta;
                 end
             end
-
         % lateral variations provided as a map ----------------------------
         elseif ~isempty(Interior_Model(ilayer).mu_latlon) || ~isempty(Interior_Model(ilayer).eta_latlon) || ...
                ~isempty(Interior_Model(ilayer).K_latlon)
