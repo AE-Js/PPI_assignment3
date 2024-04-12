@@ -237,7 +237,7 @@ for k=2:Numerics.Nr+1
         Rin = Interior_Model(ilayer-1).R;
         % Update delta r
         Delta_r = (Interior_Model(ilayer).R - Interior_Model(ilayer-1).R)/(Numerics.Nrlayer(ilayer));
-         % If there is another layer reprime blayer_ind
+        % If there is another layer reprime blayer_ind
         if iblayer < length(Numerics.BCindices)
             iblayer = iblayer + 1;
             blayer_ind = Numerics.BCindices(iblayer) + 1;

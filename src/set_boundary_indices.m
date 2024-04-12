@@ -59,11 +59,11 @@ if Numerics.Nlayers > 2
         Numerics.Nr = sum(Numerics.Nrlayer); % Total number of radial points
 
         % Set boundary indices
-        for ilayer=2:Numerics.Nlayers-1
+        for ilayer=2:Numerics.Nlayers
             if ilayer == 2
-                ind_boundary = Numerics.Nrlayer(ilayer);
+                ind_boundary = 1+Numerics.Nrlayer(ilayer);
             else
-                next_boundary = sum(Numerics.Nrlayer(1:(ilayer)));
+                next_boundary = 1+sum(Numerics.Nrlayer(1:(ilayer)));
                 ind_boundary = [ind_boundary next_boundary];
             end
         end
