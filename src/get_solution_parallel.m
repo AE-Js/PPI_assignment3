@@ -225,13 +225,25 @@ for k=2:Numerics.Nr+1
         % Update density 
         rhoK = Interior_Model(ilayer).rho;
 
+<<<<<<< HEAD
+=======
+        % Update delta r
+        Delta_r = (Interior_Model(ilayer).R - Interior_Model(ilayer-1).R)/(Numerics.Nrlayer(ilayer));
+
+        % Update radial points vector before new Delta_r and Rin
+        r(k) = Rin + (k-k_corr)*Delta_r;
+
+>>>>>>> 9cc6c8a9288061da359228be08bc8bb47f8d1379
         % Update mass and radius of the encapsulated sphere
         Min = Min + 4/3*pi*Interior_Model(ilayer-1).rho*(Interior_Model(ilayer-1).R^3 - Interior_Model(ilayer-2).R^3);
         Rin = Interior_Model(ilayer-1).R;
 
+<<<<<<< HEAD
         % Update delta r
         Delta_r = (Interior_Model(ilayer).R - Interior_Model(ilayer-1).R)/(Numerics.Nrlayer(ilayer));
         
+=======
+>>>>>>> 9cc6c8a9288061da359228be08bc8bb47f8d1379
         % Update indices correction, needed to 
         k_corr = Numerics.BCindices(iblayer-1);
 
