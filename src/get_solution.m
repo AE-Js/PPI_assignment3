@@ -514,7 +514,7 @@ else %----------------------------------------- There is a subsurface ocean!
         else
             B(24*(i-1)+13,j)=y1(8*(i-1)+8,j,ocean_start)...
                         +4*pi*Gg*(Interior_Model(ocean_layer-1).rho-Interior_Model(ocean_layer).rho)*y1(8*(i-1)+1,j,ocean_start); %dphi below ocean
-        B(24*(i-1)+13,8*Nmodes+j)=-yc2(8*(i-1)+8,j,ocean_start); %dphi at ocean
+        B(24*(i-1)+13,8*Nmodes+j)=-y2(8*(i-1)+8,j,ocean_start); %dphi at ocean
         end
         % additional BC bc some things are not defined in the ocean 
         B(24*(i-1)+14,8*Nmodes+j)=y2(8*(i-1)+1,j,ocean_start);

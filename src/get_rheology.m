@@ -359,7 +359,6 @@ for ilayer=1:Numerics.Nlayers
                 nR=[nR; Interior_Model(ilayer).K_variable(:,1)];
                 mR=[mR; Interior_Model(ilayer).K_variable(:,2)];
             end
-
             % get the unique combinations
             C = unique([nR mR],'rows');
             nR=C(:,1);
@@ -699,7 +698,6 @@ for ilayer=2:Numerics.Nlayers
             % given, the procedure is slightly different as it is assumed
             % that what is given is the entire field not just the deviation
             % from the mean.
-
             % Maxwell time
             MaxTime_zlonlat.lon=mu_zlonlat.lon;
             MaxTime_zlonlat.lat=mu_zlonlat.lat;
@@ -721,7 +719,6 @@ for ilayer=2:Numerics.Nlayers
                 Cmu_zlonlat.z = Interior_Model(ilayer).mu*(1+mu_zlonlat.z)./ ...
                         (1-1i./(MaxTime_zlonlat.z * Interior_Model(ilayer).MaxTime));
             end
-
             % find spherical harmonics coefficients
             % real part 
             muR_zlonlat.lon=mu_zlonlat.lon;
@@ -836,7 +833,7 @@ for ilayer=2:Numerics.Nlayers
         else
             Interior_Model(ilayer).rheology_variable(:,[1 2])=Interior_Model(ilayer).mu_variable(:,[1 2]);
             Interior_Model(ilayer).rheology_variable(:,3)=0;
-            Interior_Model(ilayer).rheology_variable(:,4)=Interior_Model(ilayer).mu_variable(:,3);
+            Interior_Model(ilayer).rheology_variable(:,4)=Interior_Model(ilayer).mu*Interior_Model(ilayer).mu_variable(:,3);
             Interior_Model(ilayer).muC=Interior_Model(ilayer).mu;
             Interior_Model(ilayer).mu00R=Interior_Model(ilayer).mu;
         end
