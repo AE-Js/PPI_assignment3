@@ -7,3 +7,4 @@
 /files/output
 *.asv
 **/*.asv
+/tests/Io_SS.m

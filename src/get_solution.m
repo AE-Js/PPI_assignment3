@@ -3,44 +3,45 @@
 %USE: Obtain solution using propagator method
 
 %% INPUT
-    % Interior_Model
-        %mean properties 
-        %Interior_Model(ilayer).R0: radius
-        %Interior_Model(ilayer).rho0: density        
-        %Interior_Model(ilayer).mu0: shear modulus
-        %Interior_Model(ilayer).Ks0: bulk modulus, if not given, the model is assumed incompressible, 
-        %Interior_Model(ilayer).eta0: viscosity, if not give, the body is assumed elastic
-        %Interior_Model(ilayer).MaxTime: normalized Maxwell time, it can be given instead of the viscosity, else it is computed 
-        %Interior_Model(ilayer).Gg0: gravitational constant (should be equal for all layers)
-        % Lateral variations 
-        % Lateral variations can be provided in three different formats
-            %%% (1) in complex spherical harmonics: 
-                %Interio_Model(ilayer).mu_variable: shear modulus variations
-                    %mu_variable(:,1): degree of variation 
-                    %mu_variable(:,2): order of variation 
-                    %mu_variable(:,3): amplitude of the variation (mu_l^m/mu^0_0)
-                %Interio_Model(ilayer).K_variable: bulk modulus variations 
-                    %K_variable(:,1): degree of variation 
-                    %K_variable(:,2): order of variation 
-                    %K_variable(:,3):  amplitude of bulk modulus variations (K_l^m/K^0_0)
-                %Interio_Model(ilayer).eta_variable: viscosity
-                    %eta_variable(:,1): degree of variation 
-                    %eta_variable(:,2): order of variation 
-                    %eta_variable(:,3):  amplitude of viscosity variations (eta_l^m/eta^0_0)
-            %%% (2) in peak to peak variation amplitude wrt to the mean value (in percent)
-                    %Interio_Model(ilayer).mu_variable_p2p: shear modulus variations
-                    %mu_variable_p2p(:,1): degree of variation 
-                    %mu_variable_p2p(:,2): order of variation 
-                    %mu_variable_p2p:,3): amplitude of the variation (mu_l^m/mu^0_0)
-                %Interio_Model(ilayer).K_variable_p2p: bulk modulus variations 
-                    %K_variable_p2p(:,1): degree of variation 
-                    %K_variable_p2p(:,2): order of variation 
-                    %K_variable_p2p(:,3):  amplitude of bulk modulus variations (K_l^m/K^0_0)
-                %Interio_Model(ilayer).eta_variable: viscosity
-                    %eta_variable_p2p(:,1): degree of variation 
-                    %eta_variable_p2p(:,2): order of variation 
-                    %eta_variable_p2p(:,3):  amplitude of viscosity variations (eta_l^m/eta^0_0)  
-            %%% (3) as a map, in which case get_rheology will transform it to
+ % Interior_Model: Structure containing the interior model information
+    % Mean properties: 
+        %Interior_Model(ilayer).R0: radius [km]
+        %Interior_Model(ilayer).rho0: density [kg.m^{-3}]       
+        %Interior_Model(ilayer).mu0: shear modulus [Pa]
+        %Interior_Model(ilayer).Ks0: bulk modulus, if not given, the model is assumed incompressible, [Pa]
+        %Interior_Model(ilayer).eta0: viscosity, if not give, the body is assumed elastic [Pa.s]
+        %Interior_Model(ilayer).MaxTime: normalized Maxwell time, it can be given instead of the viscosity, else it is computed [-]
+        %Interior_Model(ilayer).ocean: (0) no ocean, (1) ocean
+        %Interior_Model(ilayer).Gg0: gravitational constant (should be equal for all layers) [Nm^2kg^{-2}]
+    % Lateral variations 
+    % Lateral variations can be provided in three different formats
+    %%% (1) in complex spherical harmonics: 
+        %Interio_Model(ilayer).mu_variable: shear modulus variations
+            %mu_variable(:,1): degree of variation 
+            %mu_variable(:,2): order of variation 
+            %mu_variable(:,3): amplitude of the variation (mu_l^m/mu^0_0)
+        %Interio_Model(ilayer).K_variable: bulk modulus variations 
+            %K_variable(:,1): degree of variation 
+            %K_variable(:,2): order of variation 
+            %K_variable(:,3):  amplitude of bulk modulus variations (K_l^m/K^0_0)
+        %Interio_Model(ilayer).eta_variable: viscosity
+            %eta_variable(:,1): degree of variation 
+            %eta_variable(:,2): order of variation 
+            %eta_variable(:,3):  amplitude of viscosity variations (eta_l^m/eta^0_0)
+    %%% (2) in peak to peak variation amplitude wrt to the mean value (in percent)
+        %Interio_Model(ilayer).mu_variable_p2p: shear modulus variations
+            %mu_variable_p2p(:,1): degree of variation 
+            %mu_variable_p2p(:,2): order of variation 
+            %mu_variable_p2p:,3): amplitude of the variation (mu_l^m/mu^0_0)
+        %Interio_Model(ilayer).K_variable_p2p: bulk modulus variations 
+            %K_variable_p2p(:,1): degree of variation 
+            %K_variable_p2p(:,2): order of variation 
+            %K_variable_p2p(:,3):  amplitude of bulk modulus variations (K_l^m/K^0_0)
+        %Interio_Model(ilayer).eta_variable: viscosity
+            %eta_variable_p2p(:,1): degree of variation 
+            %eta_variable_p2p(:,2): order of variation 
+            %eta_variable_p2p(:,3):  amplitude of viscosity variations (eta_l^m/eta^0_0)  
+    %%% (3) as a map, in which case get_rheology will transform it to
             % a spherical harmonics expansion. The maps can be generated by generated SPH_LatLon in SPH_Tools and 
             % for efficient transformation should be evaluated in the lat lon grid specified there, 
             % which depends on the maximum degree of the expansion. 
@@ -60,20 +61,68 @@
             % for both (1) and (2) the expansion in spherical harmonics should result in 
             % a real field (there should be both m>0 and m<0 components)
             % If this is not the case the and only >0 components are provided, the <0 component is computed
-       
-       
+    % Assigned in get_rheology 
+    %%% Mean properties: 
+        % Interior_Model(ilayer).R: normalized radius (normalized with Interior_Model(end).R0)
+        % Interior_Model(ilayer).rho: normalized density  (normalized with Interior_Model(end).rho0)     
+        % Interior_Model(ilayer).mu: normalized shear modulus of the layer (normalized with Interior_Model(end).mu0)
+        % Interior_Model(ilayer).Ks: normalized bulk modulus of layer (normalized with Interior_Model(end).mu0)
+        % Interior_Model(ilayer).Ks: normalized viscosity of layer (normalized with Interior_Model(end).mu0*Forcing.T)
+        % Interior_Model(ilayer).Gg: normalized gravitational constant (can also be given by user in model given in non-dimensional units)
+        % Interior_Model(ilayer).gs: normalized gravity at Interior_Model(ilayer).R0
+        % Interior_Model(ilayer).gs0: gravity at Interior_Model(ilayer).R0
+        %Interior_Model(ilayer).muC: normalized complex shear modulus 
+        % Interior_Model(ilayer).mu00R: normalized real component of the shear modulus 
+         % Interior_Model(ilayer).rho0_av: averaged denseity at Interior_Model(ilayer).R0
+        % Interior_Model(ilayer).rho_av: normalized averaged denseity at Interior_Model(ilayer).R0
+     %%% Lateral variations:
+        % Interior_Model(ilayer).rheology_variable: rheology variable 
+        % rheology_variable(:,1): degree of variation 
+        % rheology_variable(:,2): order of variation 
+        % rheology_variable(:,3): amplitude of bulk modulus variations (K_l^m/K^0_0)  
+        % rheology_variable(:,4): amplitude of complex shear modulus variations (\hat mu_l^m/mu^0_0(N))
+ %---------------------
     % Forcing: Structure containing forcing information
-        %Forcing.Td: forcing period
-        %Forcing.n: degree of the forcing 
-        %Forcing.m: order of the forcing 
-        
-    % Numerics: Structure containing the numerical information
-        %Numerics.Nr: number of radial points
+        % Forcing.Td: forcing period
+        % Forcing.n: degree of the forcing 
+        % Forcing.m: order of the forcing 
+        % Forcing.F: amplitude of the component 
+ %---------------------
+    % Numerics
+        %Numerics.Nlayers: number of layers, simply length(Interior_Model)
+        %Numerics.method: used for the radial discretization in set_boundary_indices. Four methods are possible 
+        %   - variable: This method sets the number of radial points in each layer
+        %       equal to Numerics.Nrbase. The variable name thus comes from the fact
+        %       that the stepsize is variable. 
+        %   - fixed: This method sets the total number of points equal to Nrbase.
+        %       Same as for the variable method, the name fixed thus means that the
+        %       stepsize is kept fixed. WARNING: This method changes the physical
+        %       boundary locations to ensure that they occur at a integer number of
+        %       points.
+        %    - combination: This method is a combination of the fixed and variable
+        %       method. Numerics.Nrbase serves as the base number of points per layer
+        %       onto which an additional number of points is added based on the
+        %       physical size of the layer. The total number of points will depend on
+        %       the number of layers but is roughly given by (Nlayers+1)*Nrbase
+        %   - manual: This method allows the user to set the number of points per 
+        %       layer manually. In order for it to work an array needs to be
+        %       provided as a varargin after putting 'manual' as a varargin as well. 
+        %       The syntax of the array needs to be: [0, points in layer #1, points
+        %       in layer #2, etc]
+        %Numerics.Nrbase: used for the radial discretization  (see above) 
+        %Numerics.Nr: number of radial points (computed inside set_boundary_indices)
+        %Numerics.Nrlayer(layer): number of radial points per layer (computed inside set_boundary_indices)
+        %Numerics.BCindices(layer): indec of the layer point at the boundaries
         %Numerics.perturbation_order: maximum order of the perturbation. Default 2
-        %Numerics.solution_cutoff: cut off degree (if specified instead of perturbation_order)
-        %Numerics.rheology_cutoff: cut off degree for rheology. Default 30
-        %Numerics.load_couplings: load coupling coefficients (1) or not (0). Default 1. 
-     
+        %Numerics.rheology_cutoff: determines which terms of the rheology are included (only relevant for viscoelastic). terms with log10(mu_n^m)-log10(mu_n^m(leading))>=-Numerics.rheology_cutoff are included. Default 0 (only leading terms)
+        %Numerics.Nenergy: maximum degree to which energy dissipation is expanded. Defaulft 8. 
+        %Numerics.load_couplings: 
+             % (0) compute coupling coefficients
+             % (1) load coupling coefficients from file that contains ALL coupling up to rheology variations of a degree higher than those specied, if such a file does not exist compute it   (default) 
+             % (2) load coupling coefficintes from a file that contains specifically the coupling coefficients for the rheology specied, if it does not exisit, compute it. 
+        % Numerics.parallel_sol  Calculate the solution using a parfor-loop either 0 or 1
+        % Numerics.parallel_gen  Calculate potential coupling files using parfor-loops either 0 or 1
+ %----------------
     % Couplings
         % Couplings.n_s: degrees for which solution needs to be solved
         % Couplings.m_s: order for which solution needs to be solved
