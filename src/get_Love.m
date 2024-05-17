@@ -532,11 +532,10 @@ end
 if verbose==1
     tStart = tic;
 end
-if Numerics.parallel_sol == 0 && Numerics.parallel_gen == 1
-    y_sol = get_solution_parallel(Interior_Model,Forcing,Numerics,Couplings,verbose,out_file);
-else
-    y_sol = get_solution(Interior_Model,Forcing,Numerics,Couplings,verbose,out_file);
-end
+
+% Compute solution matrix
+y_sol = get_solution(Interior_Model,Forcing,Numerics,Couplings,verbose);
+
 if verbose==1
     disp(['Time Spent: ' num2str(toc(tStart)) 's'])
 end

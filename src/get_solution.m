@@ -135,7 +135,6 @@
                 %Coupl_re(ic,ia,27,ir): 1 if any coefficient is not-zero 
                 %ir indicates the rheology coupling considered
     % verbose (1) print information 
-    % out_file_name: name output file (0) if no printing
 %% OUTPUT 
     % y_sol: solution matrix
         % y_sol(radial_point,1,mode)): r
@@ -163,7 +162,7 @@
         % y_sol(radial_point,23,mode): \epsilon{n,n+1,2}
         % y_sol(radial_point,24,mode): \epsilon_{n,n+2,2}
 %% FUNCTION
-function [y_sol] = get_solution(Interior_Model,Forcing,Numerics,Couplings,verbose,out_file_name)
+function [y_sol] = get_solution(Interior_Model,Forcing,Numerics,Couplings,verbose)
 %% OBTAIN MATRICES THAT ONLY NEED TO BE COMPUTED ONCE
     % \sigma=A1\dot u+A2/r u 
     % \epsilon=A14\dot u+A15/r u
@@ -178,38 +177,42 @@ function [y_sol] = get_solution(Interior_Model,Forcing,Numerics,Couplings,verbos
     % u=[u_{n-1} u_n u_{n+1}]
     % y=[U_n^m, V_n^m, W_n^m, R_n^m, S_n^m, W_n^m, \phi_n^m, \dot\phi_n^m]
 
-ind=find(Couplings.n_s==0);
+% Extract Coupling degrees and modes
+n_s = Couplings.n_s;
+m_s = Couplings.m_s;
+
+ind = find(n_s==0, 1);
 if isempty(ind)==1
-    deg0=0;
+    deg0 = 0;
 else
-    deg0=1; 
+    deg0 = 1; 
 end
+
 % check if there is a subsurface ocean
-ocean_layer=0;
-ocean_flag=0; 
+ocean_layer = 0;
+ocean_flag = 0; 
 if isfield(Interior_Model,'ocean')
     for i=1:length(Interior_Model)
         if Interior_Model(i).ocean==1
-            ocean_layer=i; 
-            ocean_start=Numerics.BCindices(ocean_layer-2);
-            ocean_end=Numerics.BCindices(ocean_layer-1);
+            ocean_layer = i; 
+            ocean_start = Numerics.BCindices(ocean_layer-2);
+            ocean_end = Numerics.BCindices(ocean_layer-1);
         end
     end
 end
-% Initialise the solution matrix
-Nmodes=length(Couplings.n_s);
-y1=zeros(8*Nmodes,8*Nmodes,Numerics.Nr+1); %from core to ocean 
-y2=zeros(8*Nmodes,8*Nmodes,Numerics.Nr+1); %from ocean to outer shell 
-y3=zeros(8*Nmodes,8*Nmodes,Numerics.Nr+1); %outer shell
-y_old=zeros(8*Nmodes,8*Nmodes,1);
-for i=1:8*Nmodes
-    y1(i,i,1)=1; %set Cs.
-    if ocean_layer>0
-        y2(i,i,ocean_start)=1; %set Cs to 1
-        y3(i,i,ocean_end)=1; %set Cs to 1
-    end
-end
 
+% Initialise the solution matrices
+Nmodes        = length(n_s);
+y             = zeros(8*Nmodes,8*Nmodes,Numerics.Nr+1);
+AProp_arr     = zeros(8*Nmodes,8*Nmodes,Numerics.Nr+1);
+AProp_arr_aux = zeros(3*Nmodes,8*Nmodes,Numerics.Nr+1);
+A1_arr        = zeros(6*Nmodes,3*Nmodes,Numerics.Nlayers-1);
+A2_arr        = zeros(6*Nmodes,3*Nmodes,Numerics.Nlayers-1);
+one_arr       = zeros(8*Nmodes,8*Nmodes,1);
+for i=1:8*Nmodes
+    y(i,i,1) = 1; %set Cs. 
+    one_arr(i,i) = 1; % Identity matrix
+end
 
 % Set the indice of the first boundary layer if applicable
 blayer_ind = 0; % Set default value
@@ -260,32 +263,56 @@ if deg0==1
     A3_inv([1,2],:)=0;
 end
 
-% Fill matrices that do depend on the rheology using the rheology of the first layer
-[A2,A1]=get_A1A2(Interior_Model(ilayer),Couplings); 
-[A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12]=get_others(Couplings,Interior_Model(ilayer));
+% Initialize matrices needed for paralellization
+Delta_r_arr = zeros(1,Numerics.Nr+1);
+ilayer_arr = zeros(1,Numerics.Nr+1);
+Min_arr = zeros(1,Numerics.Nr+1);
+Rin_arr = zeros(1,Numerics.Nr+1);
+rhoK_arr = zeros(1,Numerics.Nr+1);
+rK_arr = zeros(6,Numerics.Nr+1);
+gK_arr = zeros(6,Numerics.Nr+1);
+dgK_arr = zeros(6,Numerics.Nr+1);
 
+% Fill first indice of said matrices
+Delta_r_arr(1) = Delta_r;
+Min_arr(1) = 4/3*pi*rhoC*Rc^3;
+Rin_arr(1) = Interior_Model(1).R;
+rhoK_arr(1) = Interior_Model(ilayer).rho;
+ilayer_arr(1) = ilayer;
+rK_arr(:,1) = Rin;
+gK_arr(:,1) = Gg*(Min)/Rin^2;
+dgK_arr(:,1) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/Rin^3 + 4/3*pi*rhoK);
+
+% Compute matrices that depend on rheology/layer
+[A2,A1] = get_A1A2(Interior_Model(ilayer),Couplings); 
+[A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12] = get_others(Couplings,Interior_Model(ilayer));
+
+% Caculate propagation matrix for auxilliary properties at index 1
+Aprop = get_Aprop(Rc,gK_arr(1,1),dgK_arr(1,1),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+AProp_arr_aux(:,:,1) = Aprop(1:3*Nmodes,:);
+
+%% PRECOMPUTE THE PROPAGATION MATRIX
 if verbose==1
-    disp(' ###########################################################################')
-    disp(' Integrating radially ...')
+    tic
 end
-%% INTEGRATE RADIALLY
-tic
-% Start the radial integration
-for k=2:Numerics.Nr+1    
-    % Check whether the integration is at a new layer & change to the y solution needed depending if we are below or above the ocean
-    if k==2
-        y=y1;
-    end
+
+% Pre-compute some arrays to allow parallelization later
+for k=2:Numerics.Nr+1
+    % Check whether the integration is at a new layer
     if k == blayer_ind 
         % Go to next layer
         ilayer = ilayer + 1;
+        
         % Update density 
         rhoK = Interior_Model(ilayer).rho;
+
         % Update mass and radius of the encapsulated sphere
         Min = Min + 4/3*pi*Interior_Model(ilayer-1).rho*(Interior_Model(ilayer-1).R^3 - Interior_Model(ilayer-2).R^3);
         Rin = Interior_Model(ilayer-1).R;
+
         % Update delta r
         Delta_r = (Interior_Model(ilayer).R - Interior_Model(ilayer-1).R)/(Numerics.Nrlayer(ilayer));
+
         % If there is another layer reprime blayer_ind
         if iblayer < length(Numerics.BCindices)
             iblayer = iblayer + 1;
@@ -293,373 +320,196 @@ for k=2:Numerics.Nr+1
         else
             % Update regardless to keep consistency in last layer
             iblayer = iblayer + 1;
-        end 
+        end
+        
         % Update indices correction, needed to 
         k_corr = Numerics.BCindices(iblayer-1);
+
+        % Update radial points vector before new Delta_r and Rin
         r(k) = Rin + (k-k_corr)*Delta_r;
-        % Obtain density difference with previous layer (is positive)
-        rho_diff = Interior_Model(ilayer).Delta_rho;
-        if ilayer==ocean_layer % we are at the ocean layer
-            y1=y;%store propagation of inner layer 
-            y=y2;%get ready to propagate ocean layer
-            y_old=y(:,:,k-1); %set y_old 
-            % Recalculate propagation matrix
-            [A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12]=get_others(Couplings,Interior_Model(ilayer));
-            % flag that we are in an ocean layer 
-            ocean_flag=1; 
-        elseif ilayer==ocean_layer+1 %we are in the first layer of the shell 
-            ocean_flag=0; 
-            y2=y;% store ocean propagation
-            y=y3;%get ready to propagate ice layer
-            y_old=y(:,:,k-1); %set y_old 
-            % Recalculate propagation matrix 
-            [A2,A1]=get_A1A2(Interior_Model(ilayer),Couplings); 
-            [A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12]=get_others(Couplings,Interior_Model(ilayer));
-        else %just another layer 
-            % Recalculate propagation matrix
-             ocean_flag=0;
-            [A2,A1]=get_A1A2(Interior_Model(ilayer),Couplings); 
-            [A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12]=get_others(Couplings,Interior_Model(ilayer));
-             % Apply the effect of the density discontinuity
-            cont_condition(8*(0:(Nmodes-1))+8,:,1) = ...
-            4*pi*Gg*rho_diff*y(8*(0:(Nmodes-1))+1,:,k-1);
-            y_old=y(:,:,k-1) + cont_condition;
-        end       
+
     else
-        % Update the solution at the previous node
-        y_old = y(:,:,k-1);
         % Update radial points vector
         r(k) = Rin + (k-k_corr)*Delta_r;
     end
+    
+    % Save these values in an array for later
+    Min_arr(k) = Min;
+    Rin_arr(k) = Rin;
+    rhoK_arr(k) = rhoK;
+    ilayer_arr(k) = ilayer;
+    Delta_r_arr(k) = Delta_r;
+    
     %%%%%%%%%%% Step 1
     rK = Rin + ((k-k_corr)-1)*Delta_r;
-    gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
-    dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
-    Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
-    k1 = Delta_r*Aprop*y_old;
+    rK_arr(1,k) = rK;
+    gK_arr(1,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
+    dgK_arr(1,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
+
     %%%%%%%%%%% Step 2
     rK = Rin + ((k-k_corr)-1)*Delta_r + AA2*Delta_r; 
-    gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
-    dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
-    Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
-    k2 = Delta_r*Aprop*(y_old + B21*k1);
+    rK_arr(2,k) = rK; 
+    gK_arr(2,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
+    dgK_arr(2,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
+
     %%%%%%%%%%% Step 3
     rK = Rin + ((k-k_corr)-1)*Delta_r + AA3*Delta_r; 
-    gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
-    dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
-    Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
-    k3 = Delta_r*Aprop*(y_old + B31*k1 + B32*k2);
+    rK_arr(3,k) = rK; 
+    gK_arr(3,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
+    dgK_arr(3,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
+
     %%%%%%%%%%% Step 4
     rK = Rin + ((k-k_corr)-1)*Delta_r + AA4*Delta_r; 
-    gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
-    dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
-    Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
-    k4 = Delta_r*Aprop*(y_old + B41*k1 + B42*k2 + B43*k3);
+    rK_arr(4,k) = rK; 
+    gK_arr(4,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
+    dgK_arr(4,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
+
     %%%%%%%%%%% Step 5
-    rK = Rin + ((k-k_corr)-1)*Delta_r + AA5*Delta_r; 
-    gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
-    dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
-    Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
-    k5 = Delta_r*Aprop*(y_old + B51*k1 + B52*k2 + B53*k3 + B54*k4);
+    rK = Rin + ((k-k_corr)-1)*Delta_r + AA5*Delta_r;
+    rK_arr(5,k) = rK; 
+    gK_arr(5,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
+    dgK_arr(5,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
+
     %%%%%%%%%%% Step 6
     rK = Rin + ((k-k_corr)-1)*Delta_r + AA6*Delta_r; 
-    gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
-    dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
-    Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
-    k6 = Delta_r*Aprop*(y_old + B61*k1 + B62*k2 + B63*k3 + B64*k4 + B65*k5);
-    %get next step
-    y(:,:,k) = y_old + AC1*k1 + AC2*k2 + AC3*k3 + AC4*k4 + AC5*k5 + AC6*k6;
-end
-if ocean_layer>0
-    y3=y; 
-else
-    y1=y; 
-end
-if verbose == 1
-    disp(['Time spent ingtegrating radially ' num2str(toc) ' s'])
+    rK_arr(6,k) = rK; 
+    gK_arr(6,k) = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
+    dgK_arr(6,k) = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
 end
 
-%% REARRANGE SOLUTION VECTOR 
-tic
-y1_re=zeros(size(y));
-y1_re2=zeros(size(y));
-y2_re=zeros(size(y));
-y2_re2=zeros(size(y));
-y3_re=zeros(size(y));
-y3_re2=zeros(size(y));
-for i=1:Nmodes
-    index1=3*(i-1)+(1:3);
-    index2=3*Nmodes+3*(i-1)+(1:3);
-    index3=6*Nmodes+2*(i-1)+(1:2);
-    y1_re(8*(i-1)+(1:8),:,:)=y1([index1 index2 index3],:,:);
-    y2_re(8*(i-1)+(1:8),:,:)=y2([index1 index2 index3],:,:);
-    y3_re(8*(i-1)+(1:8),:,:)=y3([index1 index2 index3],:,:);
+% Calculate the propagation matrix 
+for ii=2:Numerics.Nlayers
+    if ii > 2
+        % We are at the ocean layer
+        if ii == ocean_layer 
+            % flag that we are in an ocean layer 
+            ocean_flag = 1; 
+
+            % Recalculate propagation matrix
+            [A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12] = get_others(Couplings,Interior_Model(ii));
+
+        % We are in the first layer of the shell 
+        elseif ii == ocean_layer + 1 
+            % Flag that we are not in an ocean layer
+            ocean_flag = 0; 
+
+            % Recalculate propagation matrix 
+            [A2,A1] = get_A1A2(Interior_Model(ii),Couplings); 
+            [A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12] = get_others(Couplings,Interior_Model(ii));
+        
+        % A "regular" layer 
+        else 
+            % Flag that we are not in an ocean layer
+            ocean_flag = 0;
+
+            % Recalculate propagation matrix
+            [A2,A1] = get_A1A2(Interior_Model(ii),Couplings); 
+            [A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12] = get_others(Couplings,Interior_Model(ii));
+        end       
+    end
+    inds = find(ilayer_arr == ii);
+    start_ind = inds(1);
+    end_ind = inds(end);
+
+    % First radialpoint is the CMB, so skip that
+    if ii == 2
+        start_ind = start_ind+1;
+    end
+    A1_arr(:,:,ii-1) = A1;
+    A2_arr(:,:,ii-1) = A2;
+    
+    if Numerics.parallel_sol == 0 && Numerics.parallel_gen == 1
+        parfor k = start_ind:end_ind
+            %%%%%%%%%%% Step 1
+            Aprop = get_Aprop(rK_arr(1,k),gK_arr(1,k),dgK_arr(1,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k1 = Delta_r_arr(k)*Aprop*one_arr;
+            %%%%%%%%%%% Step 2
+            Aprop = get_Aprop(rK_arr(2,k),gK_arr(2,k),dgK_arr(2,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k2 = Delta_r_arr(k)*Aprop*(one_arr + B21*k1);
+            %%%%%%%%%%% Step 3
+            Aprop = get_Aprop(rK_arr(3,k),gK_arr(3,k),dgK_arr(3,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k3 = Delta_r_arr(k)*Aprop*(one_arr + B31*k1 + B32*k2);
+            %%%%%%%%%%% Step 4
+            Aprop = get_Aprop(rK_arr(4,k),gK_arr(4,k),dgK_arr(4,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k4 = Delta_r_arr(k)*Aprop*(one_arr + B41*k1 + B42*k2 + B43*k3);
+            %%%%%%%%%%% Step 5
+            Aprop = get_Aprop(rK_arr(5,k),gK_arr(5,k),dgK_arr(5,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k5 = Delta_r_arr(k)*Aprop*(one_arr + B51*k1 + B52*k2 + B53*k3 + B54*k4);
+            %%%%%%%%%%% Step 6
+            Aprop = get_Aprop(rK_arr(6,k),gK_arr(6,k),dgK_arr(6,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k6 = Delta_r_arr(k)*Aprop*(one_arr + B61*k1 + B62*k2 + B63*k3 + B64*k4 + B65*k5);
+        
+            % Get next step
+            AProp_arr(:,:,k) = AC1*k1 + AC3*k3 + AC4*k4 + AC6*k6;
+        
+            % Compute Aprop for auxilliary coefficients
+            % Retrieve values
+            rK = r(k); 
+            Min = Min_arr(k);
+            Rin = Rin_arr(k);
+            rhoK = rhoK_arr(k);
+        
+            % Calculate gravity acceleration necessary
+            gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
+            dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
+        
+            % Caculate propagation matrix
+            Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            AProp_arr_aux(:,:,k) = Aprop(1:3*Nmodes,:);
+        end
+    else
+        for k = start_ind:end_ind
+            %%%%%%%%%%% Step 1
+            Aprop = get_Aprop(rK_arr(1,k),gK_arr(1,k),dgK_arr(1,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k1 = Delta_r_arr(k)*Aprop*one_arr;
+            %%%%%%%%%%% Step 2
+            Aprop = get_Aprop(rK_arr(2,k),gK_arr(2,k),dgK_arr(2,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k2 = Delta_r_arr(k)*Aprop*(one_arr + B21*k1);
+            %%%%%%%%%%% Step 3
+            Aprop = get_Aprop(rK_arr(3,k),gK_arr(3,k),dgK_arr(3,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k3 = Delta_r_arr(k)*Aprop*(one_arr + B31*k1 + B32*k2);
+            %%%%%%%%%%% Step 4
+            Aprop = get_Aprop(rK_arr(4,k),gK_arr(4,k),dgK_arr(4,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k4 = Delta_r_arr(k)*Aprop*(one_arr + B41*k1 + B42*k2 + B43*k3);
+            %%%%%%%%%%% Step 5
+            Aprop = get_Aprop(rK_arr(5,k),gK_arr(5,k),dgK_arr(5,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k5 = Delta_r_arr(k)*Aprop*(one_arr + B51*k1 + B52*k2 + B53*k3 + B54*k4);
+            %%%%%%%%%%% Step 6
+            Aprop = get_Aprop(rK_arr(6,k),gK_arr(6,k),dgK_arr(6,k),Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            k6 = Delta_r_arr(k)*Aprop*(one_arr + B61*k1 + B62*k2 + B63*k3 + B64*k4 + B65*k5);
+        
+            % Get next step
+            AProp_arr(:,:,k) = AC1*k1 + AC3*k3 + AC4*k4 + AC6*k6;
+        
+            % Compute Aprop for auxilliary coefficients
+            % Retrieve values
+            rK = r(k); 
+            Min = Min_arr(k);
+            Rin = Rin_arr(k);
+            rhoK = rhoK_arr(k);
+        
+            % Calculate gravity acceleration necessary
+            gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
+            dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
+        
+            % Caculate propagation matrix
+            Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
+            AProp_arr_aux(:,:,k) = Aprop(1:3*Nmodes,:);
+        end
+    end
 end
-for i=1:Nmodes
-    index1=3*(i-1)+(1:3);
-    index2=3*Nmodes+3*(i-1)+(1:3);
-    index3=6*Nmodes+2*(i-1)+(1:2);
-    y1_re2(:,8*(i-1)+(1:8),:)=y1_re(:,[index1 index2 index3],:); 
-    y2_re2(:,8*(i-1)+(1:8),:)=y2_re(:,[index1 index2 index3],:); 
-    y3_re2(:,8*(i-1)+(1:8),:)=y3_re(:,[index1 index2 index3],:); 
-end
-if verbose == 1
-    disp(['Time spent rearranging the solution vector' num2str(toc) ' s'])
-end
-%% ASSEMBLE MATRIX FOR INVERSION
-if ocean_layer>0 %there is an ocean
-    % there are 3*8*Nmodes integration constants
-    B=zeros(24*Nmodes,24*Nmodes);
-    B2=zeros(24*Nmodes,1);
-    y1=y1_re2;
-    y2=y2_re2;
-    y3=y3_re2;
-else %there is not an ocean 
-    B=zeros(8*Nmodes,8*Nmodes); %there are 8*Nmodes integration constants
-    B2=zeros(8*Nmodes,1);
-    y1=y1_re2;
-    y3=y1_re2;
-end
-tic
+
+% Clear some big matrices from memory
+clear Couplings rK_arr gK_arr dgK_arr Delta_r_arr k1 k2 k3 k4 k5 k6 Aprop
+
 if verbose==1
-    disp(' ###########################################################################')
-    disp(' Applying BC to get the integration constants ...')
+    disp(['Time Spent computing the propagation matrix ' num2str(toc) ' s'])
 end
 
-if ocean_layer==0 % the model does not have an ocean layer 
-for i=1:Nmodes
-    n=Couplings.n_s(i);
-    m=Couplings.m_s(i);
-    % Written such that the code handles icy moons correctly
-    rho2 = Interior_Model(1).Delta_rho + Interior_Model(2).rho; 
-    for j=1:8*Nmodes
-        %Core-Mantle BC -----------------------
-        % BC1 radial stress
-        B(8*(i-1)+1,j)=B(8*(i-1)+1,j)+y1(8*(i-1)+1,j,1); %U
-        B(8*(i-1)+1,j)=B(8*(i-1)+1,j)-1/gc/rho2*y1(8*(i-1)+4,j,1); %R 
-        B(8*(i-1)+1,j)=B(8*(i-1)+1,j)+1/gc*y1(8*(i-1)+7,j,1); %\Phi
-        % BC2 no tangential stress
-        B(8*(i-1)+2,j)=B(8*(i-1)+2,j)+y1(8*(i-1)+5,j,1);  % S 
-        % BC3 toroidal  
-        if n==1
-            B(8*(i-1)+3,j)=B(8*(i-1)+3,j)+y1(8*(i-1)+3,j,1);   %W, no toroidal displacement (see Qin et al. 2014) 
-        else
-            B(8*(i-1)+3,j)=B(8*(i-1)+3,j)+y1(8*(i-1)+6,j,1);   %T, toroidal stress  
-        end
-        % BC4 potential stress
-        if n==0
-            B(8*(i-1)+4,j)=B(8*(i-1)+4,j)+y1(8*(i-1)+8,j,end); %k=0
-        else
-            fac=4*pi*Gg/gc/rho2*(Interior_Model(2).rho - rho2);
-            B(8*(i-1)+4,j)=B(8*(i-1)+4,j)-fac*y1(8*(i-1)+4,j,1); %R
-            B(8*(i-1)+4,j)=B(8*(i-1)+4,j)+(n/Rc + fac*rho2)*y1(8*(i-1)+7,j,1); %\Phi
-            B(8*(i-1)+4,j)= B(8*(i-1)+4,j)-y1(8*(i-1)+8,j,1);  %\dot\Phi
-        end
-        % Surface BC ----------------------- 
-        % BC5 no radial stress
-        B(8*(i-1)+5,j)=B(8*(i-1)+5,j)+y3(8*(i-1)+4,j,end); %R=0
-        % BC6 no tangential stress
-        if n==0
-            B(8*(i-1)+6,j)=B(8*(i-1)+6,j)+y3(8*(i-1)+2,j,end); %V=0
-        else
-            B(8*(i-1)+6,j)=B(8*(i-1)+6,j)+y3(8*(i-1)+5,j,end); %S=0
-        end
-        % BC7 no toroidal stress 
-        if n==0
-            B(8*(i-1)+7,j)=B(8*(i-1)+7,j)+y3(8*(i-1)+3,j,end); %W=0 
-        else
-            B(8*(i-1)+7,j)=B(8*(i-1)+7,j)+y3(8*(i-1)+6,j,end); %T=0  
-        end
-        % BC8 potential stress 
-        if n<2
-            B(8*(i-1)+8,j)=B(8*(i-1)+8,j)+y3(8*(i-1)+7,j,end); %k=0
-        else
-            B(8*(i-1)+8,j)=B(8*(i-1)+8,j)+4*pi*Gg*rhoK*y3(8*(i-1)+1,j,end); %U
-            B(8*(i-1)+8,j)=B(8*(i-1)+8,j)+(n+1)*y3(8*(i-1)+7,j,end); %\Phi
-            B(8*(i-1)+8,j)=B(8*(i-1)+8,j)+y3(8*(i-1)+8,j,end); %\dot\Phi
-        end
-    end
-    if n==Forcing.n && m==Forcing.m
-        B2(8*(i-1)+8,1)=2*n+1;
-    end
-end
-else %----------------------------------------- There is a subsurface ocean!
- for i=1:Nmodes
-    n=Couplings.n_s(i);
-    m=Couplings.m_s(i);
-    % Written such that the code handles icy moons correctly
-    rho2 = Interior_Model(1).Delta_rho + Interior_Model(2).rho; 
-    for j=1:8*Nmodes
-        %Core-Mantle BC -----------------------
-        % BC1 radial stress
-        B(24*(i-1)+1,j)=B(24*(i-1)+1,j)+y1(8*(i-1)+1,j,1); %U
-        B(24*(i-1)+1,j)=B(24*(i-1)+1,j)-1/gc/rho2*y1(8*(i-1)+4,j,1); %R 
-        B(24*(i-1)+1,j)=B(24*(i-1)+1,j)+1/gc*y1(8*(i-1)+7,j,1); %\Phi
-        % BC2 no tangential stress
-        B(24*(i-1)+2,j)=B(24*(i-1)+2,j)+y1(8*(i-1)+5,j,1);  % S 
-        % BC3 toroidal componnet 
-        if n==1
-            B(24*(i-1)+3,j)=B(24*(i-1)+3,j)+y1(8*(i-1)+3,j,1);   % W, no toroidal displacement (see Qin et al. 2014) 
-        else
-            B(24*(i-1)+3,j)=B(24*(i-1)+3,j)+y1(8*(i-1)+6,j,1);   %T no toroidal stress
-        end
-        % BC4 potential stress
-        if n==0
-            B(24*(i-1)+4,j)=B(24*(i-1)+4,j)+y1(8*(i-1)+8,j,ocean_start); %no potential stress
-        else
-            fac=4*pi*Gg/gc/rho2*(Interior_Model(2).rho - rho2);
-            B(24*(i-1)+4,j)=B(24*(i-1)+4,j)-fac*y1(8*(i-1)+4,j,1); %R
-            B(24*(i-1)+4,j)=B(24*(i-1)+4,j)+(n/Rc + fac*rho2)*y1(8*(i-1)+7,j,1); %\Phi
-            B(24*(i-1)+4,j)= B(24*(i-1)+4,j)-y1(8*(i-1)+8,j,1);  %\dot\Phi
-        end
-        % Surface BC ----------------------- 
-        % BC5 no radial stress
-        B(24*(i-1)+5,16*Nmodes+j)= B(24*(i-1)+5,16*Nmodes+j)+y3(8*(i-1)+4,j,end); %R=0
-        % BC6 no tangential stress
-        if n==0
-            B(24*(i-1)+6,16*Nmodes+j)=B(24*(i-1)+6,16*Nmodes+j)+y3(8*(i-1)+2,j,end); %V=0
-        else
-            B(24*(i-1)+6,16*Nmodes+j)=B(24*(i-1)+6,16*Nmodes+j)+y3(8*(i-1)+5,j,end); %S=0
-        end
-        % BC7 toroidal component 
-        if n==0
-            B(24*(i-1)+7,16*Nmodes+j)= B(24*(i-1)+7,16*Nmodes+j)+y3(8*(i-1)+3,j,end); %W=0 
-        else
-            B(24*(i-1)+7,16*Nmodes+j)=B(24*(i-1)+7,16*Nmodes+j)+y3(8*(i-1)+6,j,end); %T=0  
-        end
-        % BC8 potential stress 
-        if n<2
-            B(24*(i-1)+8,16*Nmodes+j)=y3(8*(i-1)+7,j,end); %k=0
-        else
-            B(24*(i-1)+8,16*Nmodes+j)=B(24*(i-1)+8,16*Nmodes+j)+4*pi*Gg*rhoK*y3(8*(i-1)+1,j,end); %U
-            B(24*(i-1)+8,16*Nmodes+j)=B(24*(i-1)+8,16*Nmodes+j)+(n+1)*y3(8*(i-1)+7,j,end); %\Phi
-            B(24*(i-1)+8,16*Nmodes+j)=B(24*(i-1)+8,16*Nmodes+j)+y3(8*(i-1)+8,j,end); %\dot\Phi
-        end
-        %BC in case there is an ocean 
-        % Mantle-ocean BC --------------
-        gO=Interior_Model(ocean_layer-1).gs; 
-        gI=Interior_Model(ocean_layer).gs;
-        rhoO=Interior_Model(ocean_layer).rho; 
-        % BC9 radial stress
-        B(24*(i-1)+9,j)=y1(8*(i-1)+1,j,ocean_start)-1/gO/rhoO*y1(8*(i-1)+4,j,ocean_start)+1/gO*y1(8*(i-1)+7,j,ocean_start); %      
-        % BC10 no tangential stress
-        if n==0
-            B(24*(i-1)+10,j)=y1(8*(i-1)+2,j,ocean_start); % V=0
-        else
-            B(24*(i-1)+10,j)=y1(8*(i-1)+5,j,ocean_start); % S=0
-        end
-        % BC11 toroidal stress
-        if n==0
-            B(24*(i-1)+11,j)=y1(8*(i-1)+3,j,ocean_start); % W=0
-        else
-            B(24*(i-1)+11,j)=y1(8*(i-1)+6,j,ocean_start); % T=0
-        end
-        % BC12 continuity potential 
-        B(24*(i-1)+12,j)=y1(8*(i-1)+7,j,ocean_start); % phi below ocean
-        B(24*(i-1)+12,8*Nmodes+j)=-y2(8*(i-1)+7,j,ocean_start); % phi ocean
-        % BC13 potential stres
-        if n<0
-            B(24*(i-1)+13,j)=y1(8*(i-1)+7,j,ocean_start); %conservation of mass
-        else
-            B(24*(i-1)+13,j)=y1(8*(i-1)+8,j,ocean_start)...
-                        +4*pi*Gg*(Interior_Model(ocean_layer-1).rho-Interior_Model(ocean_layer).rho)*y1(8*(i-1)+1,j,ocean_start); %dphi below ocean
-        B(24*(i-1)+13,8*Nmodes+j)=-y2(8*(i-1)+8,j,ocean_start); %dphi at ocean
-        end
-        % additional BC bc some things are not defined in the ocean 
-        B(24*(i-1)+14,8*Nmodes+j)=y2(8*(i-1)+1,j,ocean_start);
-        B(24*(i-1)+15,8*Nmodes+j)=y2(8*(i-1)+2,j,ocean_start);
-        B(24*(i-1)+16,8*Nmodes+j)=y2(8*(i-1)+3,j,ocean_start);
-        B(24*(i-1)+17,8*Nmodes+j)=y2(8*(i-1)+4,j,ocean_start);
-        B(24*(i-1)+18,8*Nmodes+j)=y2(8*(i-1)+5,j,ocean_start);
-        B(24*(i-1)+19,8*Nmodes+j)=y2(8*(i-1)+6,j,ocean_start);
-        % Ocean-shell BC -----------------
-        % BC20 radial stress
-        B(24*(i-1)+20,16*Nmodes+j)=y3(8*(i-1)+1,j,ocean_end)-1/gI/rhoO*y3(8*(i-1)+4,j,ocean_end)+1/gI*y3(8*(i-1)+7,j,ocean_end); % U+\phi/g-R/\rho g       
-        % BC21 no tangential stress
-        B(24*(i-1)+21,16*Nmodes+j)=y3(8*(i-1)+5,j,ocean_end); % S=0
-        % BC22 no toroidal stress
-        if n==1
-            B(24*(i-1)+22,16*Nmodes+j)=y3(8*(i-1)+3,j,ocean_end); % W=0
-        else
-            B(24*(i-1)+22,16*Nmodes+j)=y3(8*(i-1)+6,j,ocean_end); % T=0
-        end
-        % BC23 continuity potential 
-        B(24*(i-1)+23,16*Nmodes+j)=y3(8*(i-1)+7,j,ocean_end); % phi above ocean
-        B(24*(i-1)+23,8*Nmodes+j)=-y2(8*(i-1)+7,j,ocean_end); % phi ocean
-        % BC24 potential stres
-        if n<0
-            B(24*(i-1)+24,16*Nmodes+j)=y3(8*(i-1)+8,j,ocean_end); % phi above ocean
-        else
-            B(24*(i-1)+24,16*Nmodes+j)=y3(8*(i-1)+8,j,ocean_end)...
-                                +4*pi*Gg*(Interior_Model(ocean_layer+1).rho-Interior_Model(ocean_layer).rho)*y3(8*(i-1)+1,j,ocean_end); % U at the boundary 
-            B(24*(i-1)+24,8*Nmodes+j)=-y2(8*(i-1)+8,j,ocean_end); %dphi at ocean
-        end
-    end
-    if n==Forcing.n && m==Forcing.m
-        B2(24*(i-1)+8,1)=2*n+1;
-    end
-end
-end
-
+%% PROPAGATE THE SOLUTION
 if verbose == 1
-    disp(['Time spent assembling BC matrix' num2str(toc) ' s'])
+    tic
 end
-
-%% OBTAIN COEFFICIENTS
-tic
-C=B\B2;
-if verbose == 1
-    disp(['Time spent obtaining integration constants' num2str(toc) ' s'])
-end
-
-%% ASSEMBLE SOLUTION
-y_sol = zeros(Numerics.Nr+1,8*Nmodes);
-if ocean_layer==0
-    for i=1:Numerics.Nr+1
-        y_sol(i,:)=transpose(y1(:,:,i)*C);
-    end
-else % there is an ocean and the three solutions need to be combined. 
-    y2(:,:,ocean_start)=0; % point at ocean_start and at ocean_end belongs to layer below and above the ocean
-    y2(:,:,ocean_end)=0; 
-    for i=1:Numerics.Nr+1
-        y_sol(i,:)=transpose(y1(:,:,i)*C(1:8*Nmodes,1)+y2(:,:,i)*C(8*Nmodes+1:16*Nmodes,1)+y3(:,:,i)*C(16*Nmodes+1:24*Nmodes,1));
-    end
-end
-
-%% Check BC
-if verbose==1
-    for i=1:Nmodes
-        n=Couplings.n_s(i);
-        mode=8*(i-1); 
-        disp(['Mode (n,m) (' num2str(Couplings.n_s(i)) ',' num2str(Couplings.m_s(i)) ')'])
-        disp(['CMB:' num2str(y_sol(1,mode+1)+y_sol(1,mode+7)/gc-y_sol(1,mode+4)/rho2/gc) ', ' num2str(y_sol(1,mode+5)) ',' num2str(y_sol(1,mode+6)) ', ' num2str(-y_sol(1,mode+8)+(n/Rc+fac*rho2)*y_sol(1,mode+7)-fac*y_sol(1,mode+4))])
-        disp(['Surface: ' num2str(y_sol(end,mode+4)) ', ' num2str(y_sol(end,mode+5)) ', ' num2str(y_sol(end,mode+6)) ', ' num2str(y_sol(end,mode+8)+(n+1)*y_sol(end,mode+7)+4*pi*Gg*rhoK*y_sol(end,mode+1))])
-    end
-end
-
-%% COMPUTE AUXILIARY VARIABLES
-tic
-i_U=[];
-for i=1:Nmodes
-    i_U=[i_U 8*(i-1)+(1:3)];
-end
-U=y_sol(:,i_U);
-sigma=zeros(Numerics.Nr+1,6*Nmodes);
-epsilon=zeros(Numerics.Nr+1,6*Nmodes);
-% compute u 
-u=transpose(A3_inv*transpose(U));
-%compute u_dot (numerically)
-index1=[];
-index2=[];
-index3=[];
-for i=1:Nmodes
-    index1=[index1 8*(i-1)+(1:3)];
-    index2=[index2 8*(i-1)+(4:6)];
-    index3=[index3 8*(i-1)+(7:8)];
-end
-u_dot=zeros(Numerics.Nr+1,3*Nmodes);
-u_aux=zeros(size(u));
-u_aux(1:end-1,:)=u(1:end-1,:);
 
 %%%%%%%%%%% Reset all auxiliary variables %%%%%%%%%%%%
 % Set the indice of the first boundary layer if applicable
@@ -671,75 +521,480 @@ if ~isempty(Numerics.BCindices)
 end
 
 % Start counter of layer number
-ilayer = 2; 
-% Reset some necessary values
-Rin = Interior_Model(1).R; % Radius of the inner sphere (can change)
-Min = 4/3*pi*rhoC*Rc^3; % Mass of the inner sphere (can change)
-rhoK = Interior_Model(ilayer).rho; % Density of the current layer
-% Fill in matrices forthe first layer
-[A2,A1]=get_A1A2(Interior_Model(ilayer),Couplings); 
-[A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12]=get_others(Couplings,Interior_Model(ilayer));
-for k=1:Numerics.Nr
+ilayer = 2; % The core does not contribute to tidal heating
+
+% Start the radial integration using the propagation matrix
+for k=2:Numerics.Nr+1
     % Check whether the integration is at a new layer
     if k == blayer_ind 
         % Go to next layer
         ilayer = ilayer + 1;
-        if ilayer==ocean_layer
-            ocean_flag=1;
-            [A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12]=get_others(Couplings,Interior_Model(ilayer));
-        else
-            ocean_flag=0;
-            [A2,A1]=get_A1A2(Interior_Model(ilayer),Couplings); 
-            [A13, A6, A71, A72, A81, A82, A9, A100, A101, A102, A11, A12]=get_others(Couplings,Interior_Model(ilayer));
-        end
+
+        % Obtain density difference with previous layer (is positive)
+        rho_diff = Interior_Model(ilayer).Delta_rho;
+        
         % If there is another layer reprime blayer_ind
         if iblayer < length(Numerics.BCindices)
             iblayer = iblayer + 1;
             blayer_ind = Numerics.BCindices(iblayer) + 1;
+        else
+            % Update regardless to keep consistency in last layer
+            iblayer = iblayer + 1;
         end
-        % Update density 
-        rhoK = Interior_Model(ilayer).rho;
-        % Update mass and radius of the encapsulated sphere
-        Min = Min + 4/3*pi*Interior_Model(ilayer-1).rho*(Interior_Model(ilayer-1).R^3 - Interior_Model(ilayer-2).R^3);
-        Rin = Interior_Model(ilayer-1).R;
+        
+        % We are at the ocean layer
+        if ilayer == ocean_layer
+            y_old = one_arr; % set y_old 
+        
+        % We are in the first layer of the shell
+        elseif ilayer == ocean_layer + 1 
+            y_old = one_arr; % set y_old 
+        
+        % A "regular" layer 
+        else 
+            % Apply the effect of the density discontinuity
+            cont_condition(8*(0:(Nmodes-1))+8,:,1) = ...
+                4*pi*Gg*rho_diff*y(8*(0:(Nmodes-1))+1,:,k-1);
+            y_old = y(:,:,k-1) + cont_condition;
+        end       
+    else
+        % Update the solution at the previous node
+        y_old = y(:,:,k-1);
     end
-    rK = r(k); 
-    gK = Gg*(Min + 4/3*pi*rhoK*(rK^3 - Rin^3))/rK^2;
-    dgK = Gg*(2*(4/3*pi*rhoK*Rin^3 - Min)/rK^3 + 4/3*pi*rhoK);
-    Aprop = get_Aprop(rK,gK,dgK,Nmodes,A1,A2,A3_inv,A4,A5,A6,A71,A72,A81,A82,A9,A100,A101,A102,A11,A12,A13,deg0,Gg,ocean_flag);
-    x_dot = Aprop(1:3*Nmodes,:)*transpose(y_sol(k,[index1 index2 index3])); 
-    u_dot(k,:) = transpose(A3_inv*x_dot); 
-    sigma(k,:) = transpose(A1*transpose(u_dot(k,:)) + A2*transpose(u_aux(k,:)) / r(k));
+
+    % get next step
+    y(:,:,k) = y_old + AProp_arr(:,:,k)*y_old;
 end
-epsilon(:,:)=transpose(A14*transpose(u_dot)+A15*transpose(u_aux)./r);
+
+% Clear a big matrix from memory
+clear AProp_arr y_old
+
+% Reset some necessary values
+rhoK = Interior_Model(end).rho; % Density of the end layer
+
+if verbose==1
+    disp(['Time Spent Integrating radially ' num2str(toc) ' s'])
+end
+
+%% REARRANGE SOLUTION VECTOR 
+if verbose==1
+    tic
+end
+
+index_arr = zeros(8*Nmodes,1);
+for i=1:Nmodes
+    index1 = 3*(i-1)+(1:3);
+    index2 = 3*Nmodes+3*(i-1)+(1:3);
+    index3 = 6*Nmodes+2*(i-1)+(1:2);
+    index_arr(8*(i-1)+(1:8)) = [index1 index2 index3];
+end
+
+% Rearrange the matrix
+y = y(index_arr,index_arr,:);
+
+if verbose==1
+    disp(['Time Spent rearranging the solution vector ' num2str(toc) ' s'])
+end
+
+%% ASSEMBLE MATRIX FOR INVERSION
+if verbose==1
+    tic
+end
+
+% If there is an ocean there are 3*8*Nmodes integration constants
+if ocean_layer>0 
+    B  = zeros(24*Nmodes,24*Nmodes);
+    B2 = zeros(24*Nmodes,1);
+% If there is not an ocean there are 8*Nmodes integration constants
+else
+    B  = zeros(8*Nmodes,8*Nmodes);
+    B2 = zeros(8*Nmodes,1);
+end
+
+if verbose==1
+    disp(' ###########################################################################')
+    disp(' Propagating Solution ...')
+end
+
+if ocean_layer==0 % the model does not have an ocean layer 
+    for i=1:Nmodes
+        n = n_s(i);
+        m = m_s(i);
+    
+        % Written such that the code handles icy moons correctly
+        rho2 = Interior_Model(1).Delta_rho + Interior_Model(2).rho; 
+    
+        for j=1:8*Nmodes
+            %Core-Mantle BC--------------
+            % BC1 radial stress
+            if n==-3
+                B(8*(i-1)+1,j) = B(8*(i-1)+1,j) + y(8*(i-1)+4,j,1); %R=0
+            else
+                B(8*(i-1)+1,j) = B(8*(i-1)+1,j) + y(8*(i-1)+1,j,1); %U
+                B(8*(i-1)+1,j) = B(8*(i-1)+1,j) - 1/gc/rho2*y(8*(i-1)+4,j,1); %R 
+                B(8*(i-1)+1,j) = B(8*(i-1)+1,j) + 1/gc*y(8*(i-1)+7,j,1); %\Phi
+            end
+
+            % BC2 no tangential stress
+            B(8*(i-1)+2,j) = B(8*(i-1)+2,j) + y(8*(i-1)+5,j,1);  % S 
+
+            % BC3 no toroidal stress 
+            if n==1
+                B(8*(i-1)+3,j) = B(8*(i-1)+3,j) + y(8*(i-1)+3,j,1);   %W
+            else
+                B(8*(i-1)+3,j) = B(8*(i-1)+3,j) + y(8*(i-1)+6,j,1);   %T 
+            end
+
+            % BC4 potential stress
+            if n==0
+                B(8*(i-1)+4,j) = B(8*(i-1)+4,j) + y(8*(i-1)+8,j,end); %k=0
+            else
+                fac = 4*pi*Gg/gc/rho2*(Interior_Model(2).rho - rho2);
+                B(8*(i-1)+4,j) = B(8*(i-1)+4,j) - fac*y(8*(i-1)+4,j,1); %R
+                B(8*(i-1)+4,j) = B(8*(i-1)+4,j) + (n/Rc + fac*rho2)*y(8*(i-1)+7,j,1); %\Phi
+                B(8*(i-1)+4,j) = B(8*(i-1)+4,j) - y(8*(i-1)+8,j,1);  %\dot\Phi
+            end
+
+            % Surface BC------------------- 
+            % BC5 no radial stress
+            B(8*(i-1)+5,j) = B(8*(i-1)+5,j) + y(8*(i-1)+4,j,end); %R=0
+
+            % BC6 no tangential stress
+            if n==0
+                B(8*(i-1)+6,j) = B(8*(i-1)+6,j) + y(8*(i-1)+2,j,end); %V=0
+            else
+                B(8*(i-1)+6,j) = B(8*(i-1)+6,j) + y(8*(i-1)+5,j,end); %S=0
+            end
+
+            % BC7 no toroidal stress 
+            if n==0
+                B(8*(i-1)+7,j) = B(8*(i-1)+7,j) + y(8*(i-1)+3,j,end); %W=0 
+            else
+                B(8*(i-1)+7,j) = B(8*(i-1)+7,j) + y(8*(i-1)+6,j,end); %T=0  
+            end
+
+            % BC8 potential stress 
+            if n<2
+                B(8*(i-1)+8,j) = B(8*(i-1)+8,j) + y(8*(i-1)+7,j,end); %k=0
+            else
+                B(8*(i-1)+8,j) = B(8*(i-1)+8,j) + 4*pi*Gg*rhoK*y(8*(i-1)+1,j,end); %U
+                B(8*(i-1)+8,j) = B(8*(i-1)+8,j) + (n+1)*y(8*(i-1)+7,j,end); %\Phi
+                B(8*(i-1)+8,j) = B(8*(i-1)+8,j) + y(8*(i-1)+8,j,end); %\dot\Phi
+            end
+        end
+
+        % Add the forcing as a boundary condition
+        if n==Forcing.n && m==Forcing.m
+            B2(8*(i-1)+8,1) = 2*n+1;
+        end
+    end
+else %----------------------------------------- There is a subsurface ocean!
+    for i=1:Nmodes
+        n = n_s(i);
+        m = m_s(i);
+
+        % Written such that the code handles icy moons correctly
+        rho2 = Interior_Model(1).Delta_rho + Interior_Model(2).rho; 
+
+        for j=1:8*Nmodes
+            %Core-Mantle BC -----------------------
+            % BC1 radial stress
+            B(24*(i-1)+1,j) = B(24*(i-1)+1,j) + y(8*(i-1)+1,j,1); %U
+            B(24*(i-1)+1,j) = B(24*(i-1)+1,j) - 1/gc/rho2*y(8*(i-1)+4,j,1); %R 
+            B(24*(i-1)+1,j) = B(24*(i-1)+1,j) + 1/gc*y(8*(i-1)+7,j,1); %\Phi
+
+            % BC2 no tangential stress
+            B(24*(i-1)+2,j) = B(24*(i-1)+2,j) + y(8*(i-1)+5,j,1);  % S 
+
+            % BC3 toroidal componnet 
+            if n==1
+                B(24*(i-1)+3,j) = B(24*(i-1)+3,j) + y(8*(i-1)+3,j,1);   % W, no toroidal displacement (see Qin et al. 2014) 
+            else
+                B(24*(i-1)+3,j) = B(24*(i-1)+3,j) + y(8*(i-1)+6,j,1);   %T no toroidal stress
+            end
+
+            % BC4 potential stress
+            if n==0
+                B(24*(i-1)+4,j) = B(24*(i-1)+4,j) + y(8*(i-1)+8,j,ocean_start); %no potential stress
+            else
+                fac = 4*pi*Gg/gc/rho2*(Interior_Model(2).rho - rho2);
+                B(24*(i-1)+4,j) = B(24*(i-1)+4,j) - fac*y(8*(i-1)+4,j,1); %R
+                B(24*(i-1)+4,j) = B(24*(i-1)+4,j) + (n/Rc + fac*rho2)*y(8*(i-1)+7,j,1); %\Phi
+                B(24*(i-1)+4,j) = B(24*(i-1)+4,j) - y(8*(i-1)+8,j,1);  %\dot\Phi
+            end
+
+            % Surface BC ----------------------- 
+            % BC5 no radial stress
+            B(24*(i-1)+5,16*Nmodes+j) = B(24*(i-1)+5,16*Nmodes+j) + y(8*(i-1)+4,j,end); %R=0
+
+            % BC6 no tangential stress
+            if n==0
+                B(24*(i-1)+6,16*Nmodes+j) = B(24*(i-1)+6,16*Nmodes+j) + y(8*(i-1)+2,j,end); %V=0
+            else
+                B(24*(i-1)+6,16*Nmodes+j) = B(24*(i-1)+6,16*Nmodes+j) + y(8*(i-1)+5,j,end); %S=0
+            end
+
+            % BC7 toroidal component 
+            if n==0
+                B(24*(i-1)+7,16*Nmodes+j) = B(24*(i-1)+7,16*Nmodes+j) + y(8*(i-1)+3,j,end); %W=0 
+            else
+                B(24*(i-1)+7,16*Nmodes+j) = B(24*(i-1)+7,16*Nmodes+j) + y(8*(i-1)+6,j,end); %T=0  
+            end
+
+            % BC8 potential stress 
+            if n<2
+                B(24*(i-1)+8,16*Nmodes+j) = y(8*(i-1)+7,j,end); %k=0
+            else
+                B(24*(i-1)+8,16*Nmodes+j) = B(24*(i-1)+8,16*Nmodes+j) + 4*pi*Gg*rhoK*y(8*(i-1)+1,j,end); %U
+                B(24*(i-1)+8,16*Nmodes+j) = B(24*(i-1)+8,16*Nmodes+j) + (n+1)*y(8*(i-1)+7,j,end); %\Phi
+                B(24*(i-1)+8,16*Nmodes+j) = B(24*(i-1)+8,16*Nmodes+j) + y(8*(i-1)+8,j,end); %\dot\Phi
+            end
+
+            %BC in case there is an ocean 
+            % Mantle-ocean BC --------------
+            gO = Interior_Model(ocean_layer-1).gs; 
+            gI = Interior_Model(ocean_layer).gs;
+            rhoO = Interior_Model(ocean_layer).rho; 
+
+            % BC9 radial stress
+            B(24*(i-1)+9,j) = y(8*(i-1)+1,j,ocean_start) - 1/gO/rhoO*y(8*(i-1)+4,j,ocean_start) + ...
+                              1/gO*y(8*(i-1)+7,j,ocean_start); %
+
+            % BC10 no tangential stress
+            if n==0
+                B(24*(i-1)+10,j) = y(8*(i-1)+2,j,ocean_start); % V=0
+            else
+                B(24*(i-1)+10,j) = y(8*(i-1)+5,j,ocean_start); % S=0
+            end
+
+            % BC11 toroidal stress
+            if n==0
+                B(24*(i-1)+11,j) = y(8*(i-1)+3,j,ocean_start); % W=0
+            else
+                B(24*(i-1)+11,j) = y(8*(i-1)+6,j,ocean_start); % T=0
+            end
+
+            % BC12 continuity potential 
+            B(24*(i-1)+12,j) = y(8*(i-1)+7,j,ocean_start); % phi below ocean
+            B(24*(i-1)+12,8*Nmodes+j) = -one_arr(8*(i-1)+7,j); % phi ocean
+
+            % BC13 potential stres
+            if n<0
+                B(24*(i-1)+13,j) = y(8*(i-1)+7,j,ocean_start); %conservation of mass
+            else
+                B(24*(i-1)+13,j) = y(8*(i-1)+8,j,ocean_start) + ...
+                                   4*pi*Gg*( Interior_Model(ocean_layer-1).rho - ...
+                                   Interior_Model(ocean_layer).rho)*y(8*(i-1)+1,j,ocean_start); %dphi below ocean
+                B(24*(i-1)+13,8*Nmodes+j) = -one_arr(8*(i-1)+8,j); %dphi at ocean
+            end
+
+            % additional BC bc some things are not defined in the ocean 
+            B(24*(i-1)+14,8*Nmodes+j) = one_arr(8*(i-1)+1,j);
+            B(24*(i-1)+15,8*Nmodes+j) = one_arr(8*(i-1)+2,j);
+            B(24*(i-1)+16,8*Nmodes+j) = one_arr(8*(i-1)+3,j);
+            B(24*(i-1)+17,8*Nmodes+j) = one_arr(8*(i-1)+4,j);
+            B(24*(i-1)+18,8*Nmodes+j) = one_arr(8*(i-1)+5,j);
+            B(24*(i-1)+19,8*Nmodes+j) = one_arr(8*(i-1)+6,j);
+
+            % Ocean-shell BC -----------------
+            % BC20 radial stress
+            B(24*(i-1)+20,16*Nmodes+j) = one_arr(8*(i-1)+1,j) - ...
+                                         1/gI/rhoO*one_arr(8*(i-1)+4,j) + ...
+                                         1/gI*one_arr(8*(i-1)+7,j); % U+\phi/g-R/\rho g       
+            
+            % BC21 no tangential stress
+            B(24*(i-1)+21,16*Nmodes+j) = one_arr(8*(i-1)+5,j); % S=0
+            
+            % BC22 no toroidal stress
+            if n==1
+                B(24*(i-1)+22,16*Nmodes+j) = one_arr(8*(i-1)+3,j); % W=0
+            else
+                B(24*(i-1)+22,16*Nmodes+j) = one_arr(8*(i-1)+6,j); % T=0
+            end
+            
+            % BC23 continuity potential 
+            B(24*(i-1)+23,16*Nmodes+j) = one_arr(8*(i-1)+7,j); % phi above ocean
+            B(24*(i-1)+23,8*Nmodes+j) = -y(8*(i-1)+7,j,ocean_end); % phi ocean
+            
+            % BC24 potential stres
+            if n<0
+                B(24*(i-1)+24,16*Nmodes+j) = one_arr(8*(i-1)+8,j); % phi above ocean
+            else
+                B(24*(i-1)+24,16*Nmodes+j) = one_arr(8*(i-1)+8,j) + ...
+                                             4*pi*Gg*( Interior_Model(ocean_layer+1).rho - ...
+                                             Interior_Model(ocean_layer).rho)*one_arr(8*(i-1)+1,j); % U at the boundary 
+                B(24*(i-1)+24,8*Nmodes+j) = -y(8*(i-1)+8,j,ocean_end); %dphi at ocean
+            end
+        end
+
+        % Add the forcing as a boundary condition
+        if n==Forcing.n && m==Forcing.m
+            B2(24*(i-1)+8,1) = 2*n+1;
+        end
+    end
+end
+if verbose==1
+    disp(['Time Spent assembling the boundary conditions matrix ' num2str(toc) ' s'])
+end
+
+%% OBTAIN COEFFICIENTS
+if verbose==1
+    tic
+end
+C = B\B2;
+if verbose==1
+    disp(['Time Spent calculating the coefficients ' num2str(toc) ' s'])
+end
+
+% Clear some big matrices from memory
+clear B B2
+
+%% ASSEMBLE SOLUTION
+if verbose==1
+    tic
+end
+% THIS STEP CAN BE VECTORIZED
+y_sol = zeros(Numerics.Nr+1,8*Nmodes);
+
+% Check whether there is an ocean present
+if ocean_layer==0
+    for i=1:Numerics.Nr+1
+        y_sol(i,:) = transpose(y(:,:,i)*C);
+    end
+% There is an ocean and the three solutions need to be combined. 
+else 
+    for i=1:Numerics.Nr+1
+        % The point at ocean_start and at ocean_end belongs to layer below and above the ocean
+        if i <= ocean_start
+            y_sol(i,:) = transpose(y(:,:,i)*C(1:8*Nmodes,1));
+        elseif i > ocean_start && i < ocean_end
+            y_sol(i,:) = transpose(y(:,:,i)*C(8*Nmodes+1:16*Nmodes,1));
+        elseif i == ocean_end
+            y_sol(i,:) = transpose(one_arr*C(16*Nmodes+1:24*Nmodes,1));
+        elseif i > ocean_end
+            y_sol(i,:) = transpose(y(:,:,i)*C(16*Nmodes+1:24*Nmodes,1));
+        end 
+    end
+end
+if verbose==1
+    disp(['Time Spent assembling the solution ' num2str(toc) ' s'])
+end
+
+% Clear a big matrix from memory
+clear y C
+
+%% Check BC
+if verbose==1
+    if Nmodes > 60
+        disp('Skipping display of boundary conditions because Nmodes > 60')
+    else
+        for i=1:Nmodes
+            n = n_s(i);
+            mode = 8*(i-1); 
+            disp(['Mode (n,m) (' num2str(n_s(i)) ',' num2str(m_s(i)) ')'])
+            disp(['CMB:' num2str(y_sol(1,mode+1)+y_sol(1,mode+7)/gc-y_sol(1,mode+4)/rho2/gc) ', ' num2str(y_sol(1,mode+5)) ',' num2str(y_sol(1,mode+6)) ', ' num2str(-y_sol(1,mode+8)+(n/Rc+fac*rho2)*y_sol(1,mode+7)-fac*y_sol(1,mode+4))])
+            disp(['Surface: ' num2str(y_sol(end,mode+4)) ', ' num2str(y_sol(end,mode+5)) ', ' num2str(y_sol(end,mode+6)) ', ' num2str(y_sol(end,mode+8)+(n+1)*y_sol(end,mode+7)+4*pi*Gg*rhoK*y_sol(end,mode+1))])
+        end
+    end
+end
+
+%% COMPUTE AUXILIARY VARIABLES
+if verbose==1
+    tic
+end
+
+ind1 = zeros(1,3*Nmodes);% i_U
+ind2 = zeros(1,3*Nmodes);
+ind3 = zeros(1,2*Nmodes);
+for i=1:Nmodes
+    ind1(3*(i-1)+(1:3)) = 8*(i-1)+(1:3);
+    ind2(3*(i-1)+(1:3)) = 8*(i-1)+(4:6);
+    ind3(2*(i-1)+(1:2)) = 8*(i-1)+(7:8);
+end
+
+U = y_sol(:,ind1);
+sigma = zeros(Numerics.Nr+1,6*Nmodes);
+epsilon = zeros(Numerics.Nr+1,6*Nmodes);
+
+% Compute u 
+u = transpose(A3_inv*transpose(U));
+
+% Compue u_dot (numerically)
+u_dot = zeros(Numerics.Nr+1,3*Nmodes);
+u_aux = zeros(size(u));
+u_aux(1:end-1,:) = u(1:end-1,:);
+y_sol_temp = y_sol(:,[ind1 ind2 ind3]);
+
+for ii=2:Numerics.Nlayers
+    inds = find(ilayer_arr == ii);
+    start_ind = inds(1);
+    end_ind = inds(end);
+    if ii == Numerics.Nlayers
+        end_ind = end_ind - 1;
+    end
+    A1 = A1_arr(:,:,ii-1);
+    A2 = A2_arr(:,:,ii-1);
+    
+    if Numerics.parallel_sol == 0 && Numerics.parallel_gen == 1
+        parfor k = start_ind:end_ind
+            % Retrieve values
+            rK = r(k); 
+            
+            % Compute values
+            x_dot = AProp_arr_aux(:,:,k)*transpose(y_sol_temp(k,:));
+            u_dot(k,:) = transpose(A3_inv*x_dot); 
+            sigma(k,:) = transpose(A1*transpose(u_dot(k,:)) + A2*transpose(u_aux(k,:)) / rK);
+        end
+    else
+        for k = start_ind:end_ind
+            % Retrieve values
+            rK = r(k); 
+            
+            % Compute values
+            x_dot = AProp_arr_aux(:,:,k)*transpose(y_sol_temp(k,:));
+            u_dot(k,:) = transpose(A3_inv*x_dot); 
+            sigma(k,:) = transpose(A1*transpose(u_dot(k,:)) + A2*transpose(u_aux(k,:)) / rK);
+        end
+    end
+end
+epsilon(:,:) = transpose(A14*transpose(u_dot) + A15*transpose(u_aux)./r);
+
+% Clear some big matrices from memory
+clear AProp_arr_aux y_sol_temp
+
 %compue u_dot (numerically)
 % u_dot=diff(u)/Delta_r; 
 % r_av=(r(1:end-1)'+r(2:end)')/2;
 % u_av=(u(1:end-1,:)+u(2:end,:))/2;
 % sigma(2:end,:)=transpose(A1*transpose(u_dot)+A2*transpose(u_av)./r_av');
 % epsilon(2:end,:)=transpose(A14*transpose(u_dot)+A15*transpose(u_av)./r_av');
-if verbose == 1
-    disp(['Time Spent auxilliary variables' num2str(toc) ' s'])
+if verbose==1
+    disp(['Time Spent calculating the auxilliary variables ' num2str(toc) ' s'])
 end
 
 %% REARRANGE
-tic
-y_sol2=y_sol;
-y_sol=zeros(Numerics.Nr+1,24,Nmodes);
+if verbose==1
+    tic
+end
+
+y_sol2 = y_sol;
+y_sol = zeros(Numerics.Nr+1,24,Nmodes);
+
 for i=1:Nmodes
     % r
-    y_sol(:,1,i)=r;
+    y_sol(:,1,i) = r;
     %U,V,W,R,S,T,\phi,\dot\phi
-    y_sol(:,2:9,i)=y_sol2(:,8*(i-1)+(1:8));
+    y_sol(:,2:9,i) = y_sol2(:,8*(i-1)+(1:8));
     %u 
-    y_sol(:,10:12,i)=u(:,3*(i-1)+(1:3));
+    y_sol(:,10:12,i) = u(:,3*(i-1)+(1:3));
     %\sigma
-    y_sol(:,13:18,i)=sigma(:,6*(i-1)+(1:6));
+    y_sol(:,13:18,i) = sigma(:,6*(i-1)+(1:6));
     %\epsilon
-    y_sol(:,19:24,i)=epsilon(:,6*(i-1)+(1:6));
+    y_sol(:,19:24,i) = epsilon(:,6*(i-1)+(1:6));
 end
-if verbose == 1
-    disp(['Time Spent rearranging the solurtion' num2str(toc) ' s'])
+
+if verbose==1
+    disp(['Time Spent rearranging the solution vector ' num2str(toc) ' s'])
 end
 
 end
@@ -833,16 +1088,10 @@ for i=1:N
         A2(6*(i-1)+6,3*(i-1)+3)=-2*mu*sqrt((n+2)/(2*n+3));
     end
     % Coupling terms--------------------------------
-    % find couplings that appear in these equations
-%     icou = zeros(Nreo,1);
-%     for ireo=1:Nreo
-%         icou{ireo}=find(Coup(ieq,:,27,ireo)>0);
-%     end
     for ireo=1:Nreo % Nreo loop over rheology 
         ialpha=find(Coup(ieq,:,27,ireo)>0);%n_s(ialpha) m_s(ialpha) are the degrees and orders that appear in the equation
         K_nm=variable_rheology(ireo,3);
         mu_nm=variable_rheology(ireo,4);
-%         ialpha=icou{ireo}; %n_s(ialpha) m_s(ialpha) are the degrees and orders that appear in the equation
         for j=1:length(ialpha)
             ia=ialpha(j); %index of coefficient of coupling 
             na=n_s(ia);

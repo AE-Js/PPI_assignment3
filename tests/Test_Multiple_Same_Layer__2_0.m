@@ -78,8 +78,8 @@ Numerics.solution_cutoff = 12; % maximum degree of solution, not used if perturb
 Numerics.load_couplings = 1; % 0=no loading, 1=loading of specific file, 2=searches for big enough file
 Numerics.Nenergy = 12; % maximum degree to which energy dissipation is expanded 
 Numerics.rheology_cutoff = 2; % maximum order of difference (so in log) up to which rheology is still used 
-Numerics.parallel_sol = 0; % Calculate the solution using a parfor-loop either 0 or 1
-Numerics.parallel_gen = 1; % Calculate potential coupling files using parfor-loops either 0 or 1
+Numerics.parallel_sol = 0; % Use a parfor-loop to call get_Love, either 0 or 1
+Numerics.parallel_gen = 0; % Calculate potential coupling files and the propagation inside get_solution using parfor-loops, either 0 or 1
 Numerics.coupling_file_location = 'files/couplings/'; % MUST END WITH A '/' , Location where coupling files are saved or should be saved 
 
 [Numerics, Interior_Model] = set_boundary_indices(Numerics, Interior_Model,'verbose');
