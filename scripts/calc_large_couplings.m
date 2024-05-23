@@ -15,13 +15,11 @@ Numerics.parallel_gen = 1;
 coupling_file_name=['files/couplings/L_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
         num2str(Forcing.n) '_' num2str(Forcing.m) '_per' num2str(Numerics.perturbation_order) '.mat'];
 
-verbose=1;
-Nrheo_max = Numerics.Nrheo_max;
-perturbation_order = Numerics.perturbation_order;
+verbose = 1;
 
 %% compute couplings 
 disp('compute couplings')
-Couplings = get_couplings_all(perturbation_order,Nrheo_max,Forcing,Numerics,'verbose');
+Couplings = get_couplings_all(Forcing,Numerics,'verbose');
 
 %% RECOMMENDED. Save file using '-v7.3' With compression.
 save(coupling_file_name,'-struct','Couplings','-v7.3')

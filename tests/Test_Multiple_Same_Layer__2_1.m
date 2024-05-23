@@ -75,7 +75,7 @@ Numerics.method = 'fixed'; % method of setting the radial points per layer
 Numerics.Nrbase = 500; % depending on the method this will determine the number of points per layer
 Numerics.perturbation_order = 1; %maximum order to which couplings are considered
 Numerics.solution_cutoff = 8; % maximum degree of solution, not used if perturbation order is specified
-Numerics.load_couplings = 1; % 0=no loading, 1=loading of specific file, 2=searches for big enough file
+Numerics.load_couplings = 1; % 1=loading of specific file, 2=searches for big enough file
 Numerics.Nenergy = 8; % maximum degree to which energy dissipation is expanded 
 Numerics.rheology_cutoff = 2; % maximum order of difference (so in log) up to which rheology is still used 
 Numerics.parallel_sol = 0; % Use a parfor-loop to call get_Love, either 0 or 1

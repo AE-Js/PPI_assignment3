@@ -3,8 +3,9 @@
 % and solution modes that are based on the perturbation depth. 
 % This function retrieves the relevant couplings when the
 % coupling coefficient file has been loaded from a pre-computed file.
-%%
-function [Couplings]=retrieve_couplings_from_file(max_order,variations,Nrheo_max,Forcing,coupling_file_name)
+
+%% FUNCTION
+function [Couplings] = retrieve_couplings_from_file(max_order,variations,Forcing,coupling_file_name)
 % for the given rheology compute the modes that are excited using the
 % selection rules
 modes4 = get_active_modes(max_order,variations,Forcing);

@@ -5,7 +5,7 @@ clc
 %% Set relevant structs
 % Set the number of rheology modes, the forcing, the perturbation order and
 % the number of energy degrees that are taken into account. 
-Numerics.Nrheo_max = 24;
+Numerics.Nrheo_max = 18;
 Forcing(1).n = 2;
 Forcing(1).m = 0;
 Forcing(2).n = 2;
@@ -34,7 +34,7 @@ verbose=1;
 
 %% compute couplings 
 disp('compute couplings')
-Couplings = get_energy_couplings_all(Numerics.perturbation_order,Numerics.Nrheo_max,Numerics.Nenergy,Forcing,Numerics,'verbose');
+Couplings = get_energy_couplings_all(Forcing,Numerics,'verbose');
 
 %% RECOMMENDED. Save file using '-v7.3' with compression.
 save(coupling_file_name,'-struct','Couplings','-v7.3')

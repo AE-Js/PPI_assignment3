@@ -118,7 +118,7 @@
         %Numerics.load_couplings: 
              % (0) compute coupling coefficients
              % (1) load coupling coefficients from file that contains ALL coupling up to rheology variations of a degree higher than those specied, if such a file does not exist compute it   (default) 
-             % (2) load coupling coefficintes from a file that contains specifically the coupling coefficients for the rheology specied, if it does not exisit, compute it. 
+             % (2) load coupling coefficients from a file that contains specifically the coupling coefficients for the rheology specied, if it does not exisit, compute it. 
         % Numerics.parallel_sol  Calculate the solution using a parfor-loop either 0 or 1
         % Numerics.parallel_gen  Calculate potential coupling files using parfor-loops either 0 or 1
          
@@ -237,50 +237,14 @@ uniformlayers = [];
 for ilayer=2:Numerics.Nlayers
     uniformlayers = [uniformlayers Interior_Model(ilayer).uniform];
 end
+
+% Inverse boolean, non-uniform layers are now 1
 uniformlayers = uniformlayers == 0;
 
 % If there is only one non-uniform layer obtain couplings
 if any(uniformlayers) 
-    % Generate coupling file name
-    coupling_file_name=[Numerics.coupling_file_location 'L_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
-        num2str(Forcing.n) '_' num2str(Forcing.m) '_per' num2str(Numerics.perturbation_order) '.mat'];
-
-    % Look if there is a file that contains the couplings
-    coupling_file_name_search=[Numerics.coupling_file_location 'L_struct__Nrheomax__*__forc__' num2str(Forcing.n) ...
-                              '_' num2str(Forcing.m) '_per*.mat'];
-    possible_couplings_files=dir(coupling_file_name_search);
-    file_found=0;
-    i=1; 
-    potential_coupling_files = [];
-    rheo_max_file_list = [];
-
-    % Select the smallest possible file that contains all the couplings
-    while i<=length(possible_couplings_files)
-        per_start=strfind(possible_couplings_files(i).name,'_per')+4;
-        per_end=strfind(possible_couplings_files(i).name,'.mat')-1;
-        perturbation_order_file=str2num(possible_couplings_files(i).name(per_start:per_end));
-        rheo_start=strfind(possible_couplings_files(i).name,'Nrheomax__')+10;
-        rheo_end=strfind(possible_couplings_files(i).name,'__forc')-1;
-        Nrheomax_file=str2num(possible_couplings_files(i).name(rheo_start:rheo_end));
-
-        % Check whether the file fullfills the criteria and add it to the list
-        if Nrheomax_file>=Numerics.Nrheo_max && perturbation_order_file>=Numerics.perturbation_order 
-            interim_name = [Numerics.coupling_file_location possible_couplings_files(i).name];
-            potential_coupling_files = [potential_coupling_files convertCharsToStrings(interim_name)];
-            rheo_max_file_list = [rheo_max_file_list Nrheomax_file];
-        end
-        i=i+1;
-    end
-
-    % If suitable files have been found select the smallest one
-    if ~isempty(potential_coupling_files)
-        [~,ind] = min(rheo_max_file_list);
-        coupling_file_name = potential_coupling_files(ind);
-        file_found=1;
-    end  
-    
-    % remove terms with 0 amplitude 
-    % fill an array with all the used degree and orders (contains duplicates)
+    % Remove rheology terms with 0 amplitude 
+    % Fill an array with all the used degree and orders (contains duplicates)
     for ilayer=2:Numerics.Nlayers
         non_zero_rheo = find(abs(Interior_Model(ilayer).rheology_variable(:,4)) > 0);
         Interior_Model(ilayer).rheology_variable = Interior_Model(ilayer).rheology_variable(non_zero_rheo,:);
@@ -293,46 +257,130 @@ if any(uniformlayers)
 
     % Remove duplicates from rheo_degree_orders
     rheo_degree_orders = unique(rheo_degree_orders,'rows');
+
+    % Decide whether to load from a file containing all the modes for this specific rheology and settings 
+    % or coupling coefficients from a large generic file
+
+    if Numerics.load_couplings == 1 % Load from specific file
+        % Generate coupling file name
+        str_rheo = [];
+        for i=1:size(rheo_degree_orders,1)
+            str_rheo = [str_rheo num2str(rheo_degree_orders(i,1)) '_' num2str(rheo_degree_orders(i,2)) '__'];
+        end
+        coupling_file_name = [Numerics.coupling_file_location 'L_rheo__' str_rheo 'forc__' ... 
+                              num2str(Forcing.n) '_' num2str(Forcing.m) '.mat'];
+        
+        if isfile(coupling_file_name)==1 % Load couplings
+            if verbose==1
+                disp(['Coupling Loaded from: ' coupling_file_name])
+            end
+            
+            % Load couplings file
+            Couplings = load(coupling_file_name);
+            
+            if verbose==1
+                disp(['Loading coupling file took: ' num2str(toc) ' seconds'])
+            end
+        else % Compute couplings
+            if verbose==1
+                tic
+                disp(['File ' coupling_file_name 'not found. Computing all coupling coefficients, this might take some time..'])
+                Couplings = get_couplings(rheo_degree_orders,Forcing,Numerics,'verbose');
+                disp(['Time Spent: ' num2str(toc) 's'])
+                disp([' File stored in: ' coupling_file_name])
+            else
+                Couplings = get_couplings(rheo_degree_orders,Forcing,Numerics);
+            end
+            Couplings.n_r = rheo_degree_orders(:,1);
+            Couplings.m_r = rheo_degree_orders(:,2);
+            
+            % Save couplings for all terms
+            save(coupling_file_name,'-struct','Couplings','-v7.3')
+        end
+
+    elseif Numerics.load_couplings == 2 % Load from bigger/generic file
+        % Generate coupling file name
+        coupling_file_name = [Numerics.coupling_file_location 'L_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
+            num2str(Forcing.n) '_' num2str(Forcing.m) '_per' num2str(Numerics.perturbation_order) '.mat'];
     
-    % Load the coupling file
-    if file_found==1 %coupling file exist 
-        if verbose==1
-            disp([' Couplings Loaded from: ' convertStringsToChars(coupling_file_name)])
+        % Look if there is a file that contains the couplings
+        coupling_file_name_search = [Numerics.coupling_file_location 'L_struct__Nrheomax__*__forc__' num2str(Forcing.n) ...
+                                  '_' num2str(Forcing.m) '_per*.mat'];
+        possible_couplings_files = dir(coupling_file_name_search);
+        file_found = 0;
+        i = 1; 
+        potential_coupling_files = [];
+        rheo_max_file_list = [];
+    
+        % Select the smallest possible file that contains all the couplings
+        while i<=length(possible_couplings_files)
+            per_start = strfind(possible_couplings_files(i).name,'_per')+4;
+            per_end = strfind(possible_couplings_files(i).name,'.mat')-1;
+            perturbation_order_file = str2num(possible_couplings_files(i).name(per_start:per_end));
+            rheo_start = strfind(possible_couplings_files(i).name,'Nrheomax__')+10;
+            rheo_end = strfind(possible_couplings_files(i).name,'__forc')-1;
+            Nrheomax_file = str2num(possible_couplings_files(i).name(rheo_start:rheo_end));
+    
+            % Check whether the file fullfills the criteria and add it to the list
+            if Nrheomax_file>=Numerics.Nrheo_max && perturbation_order_file>=Numerics.perturbation_order 
+                interim_name = [Numerics.coupling_file_location possible_couplings_files(i).name];
+                potential_coupling_files = [potential_coupling_files convertCharsToStrings(interim_name)];
+                rheo_max_file_list = [rheo_max_file_list Nrheomax_file];
+            end
+            i=i+1;
         end
-
-        % Retrieve the coupling coefficients that are required
-        tic
-        Couplings = retrieve_couplings_from_file(Numerics.perturbation_order,rheo_degree_orders,Numerics.Nrheo_max,Forcing,coupling_file_name);
-        disp(['Loading coupling file took: ' num2str(toc) ' seconds'])
-    else %compute couplings 
-        if verbose==1
-            tic
-            disp(['File ' coupling_file_name 'not found. Computing all coupling coefficients, this might take some time..'])
-            Couplings = get_couplings_all(Numerics.perturbation_order,Numerics.Nrheo_max,Forcing,Numerics,'verbose');
-            disp(['Time Spent: ' num2str(toc) 's'])
-            disp([' File stored in: ' coupling_file_name])
-        else
-            Couplings = get_couplings_all(Numerics.perturbation_order,Numerics.Nrheo_max,Forcing,Numerics);
+    
+        % If suitable files have been found select the smallest one
+        if ~isempty(potential_coupling_files)
+            [~,ind] = min(rheo_max_file_list);
+            coupling_file_name = potential_coupling_files(ind);
+            file_found = 1;
+        end  
+        
+        % Load the coupling file
+        if file_found==1 % Coupling file exist 
+            if verbose==1
+                disp([' Couplings Loaded from: ' convertStringsToChars(coupling_file_name)])
+            end
+    
+            % Retrieve the coupling coefficients that are required
+            if verbose==1
+                tic
+            end
+            Couplings = retrieve_couplings_from_file(Numerics.perturbation_order,rheo_degree_orders,Forcing,coupling_file_name);
+            if verbose==1
+                disp(['Loading coupling file took: ' num2str(toc) ' seconds'])
+            end
+        else % Compute couplings 
+            if verbose==1
+                tic
+                disp(['File ' coupling_file_name 'not found. Computing all coupling coefficients, this might take some time..'])
+                Couplings = get_couplings_all(Forcing,Numerics,'verbose');
+                disp(['Time Spent: ' num2str(toc) 's'])
+                disp([' File stored in: ' coupling_file_name])
+            else
+                Couplings = get_couplings_all(Forcing,Numerics);
+            end
+    
+            % Save couplings for all terms
+            save(coupling_file_name,'-struct','Couplings','-v7.3')
+    
+            % Retrieve the coupling coefficients that are required
+            Couplings = retrieve_couplings(Numerics.perturbation_order,rheo_degree_orders,Forcing,Couplings);
         end
-
-        % Save couplings for all terms
-        save(coupling_file_name,'-struct','Couplings','-v7.3')
-
-        % Retrieve the coupling coefficients that are required
-        Couplings = retrieve_couplings(Numerics.perturbation_order,rheo_degree_orders,Numerics.Nrheo_max,Forcing,Couplings);
     end
     
 else
     if verbose==1
         disp('Only uniform layers so coupling matrix is zero')
     end
-    Couplings.n_s=Forcing.n;
-    Couplings.m_s=Forcing.m;
-    Couplings.order=0;
-    Couplings.Coup=zeros(1,1,27,1); 
+    Couplings.n_s = Forcing.n;
+    Couplings.m_s = Forcing.m;
+    Couplings.order = 0;
+    Couplings.Coup = zeros(1,1,27,1); 
 end
 
-Nsol=length(Couplings.n_s);
+Nsol = length(Couplings.n_s);
 
 %% PRINT MODEL INFORMATION IN SCREEN 
 if verbose==1

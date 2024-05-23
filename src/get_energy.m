@@ -63,12 +63,13 @@
         % y(radial_point,22,mode): \epsilon_{n,n,2}
         % y(radial_point,23,mode): \epsilon{n,n+1,2}
         % y(radial_point,24,mode): \epsilon_{n,n+2,2} 
- % ------------------
-%Forcing: Vector containing the forcing information
+% ------------------
+% Forcing: Vector containing the forcing information
     % Forcing.Td: forcing period
     % Forcing.n: degree of the forcing 
     % Forcing.m: order of the forcing 
     % Forcing.F: amplitude of the component 
+% ------------------
 % Interior_Model: Structure containing the interior model information
     % Mean properties: 
         %Interior_Model(ilayer).R0: radius [km]
@@ -199,59 +200,60 @@ for k = 1:length(varargin)
 end
 %% (1) COMBINE SOLUTIONS & SET IN CORRECT FORMAT
 % set solution in correct format 
-Nf=length(y); %number of forcings
-n_sol=[];
-m_sol=[];
+Nf = length(y); %number of forcings
+n_sol = [];
+m_sol = [];
 for i=1:Nf
-    n_sol=[n_sol y(i).n];
-    m_sol=[m_sol y(i).m];
+    n_sol = [n_sol y(i).n];
+    m_sol = [m_sol y(i).m];
 end
-n_aux=unique(sort(abs(n_sol)));
-m_sol_t=[];
-n_sol_t=[];
-k=1;
+n_aux = unique(sort(abs(n_sol)));
+m_sol_t = [];
+n_sol_t = [];
+k = 1;
 for i=1:length(n_aux)
-    index=find(n_aux(i)==n_sol);
-    m_aux=unique(abs(m_sol(index)));
-    m_aux=sort(unique([m_aux -m_aux]));
-    orders_l=length(m_aux);
-    m_sol_t(k:k+orders_l-1)=m_aux;
-    n_sol_t(k:k+orders_l-1)=n_aux(i);
-    k=k+orders_l;
+    index = find(n_aux(i)==n_sol);
+    m_aux = unique(abs(m_sol(index)));
+    m_aux = sort(unique([m_aux -m_aux]));
+    orders_l = length(m_aux);
+    m_sol_t(k:k+orders_l-1) = m_aux;
+    n_sol_t(k:k+orders_l-1) = n_aux(i);
+    k = k + orders_l;
 end
 
 % Build the total solution 
-y_total=zeros(Numerics.Nr+1,24,length(n_sol_t));
+y_total = zeros(Numerics.Nr+1,24,length(n_sol_t));
 for i=1:length(n_sol_t)
     for j=1:Nf
-        ind=find(n_sol_t(i)==y(j).n & m_sol_t(i)==y(j).m);
-        y_total(:,1,i)=y(1).y(:,1,1); 
+        ind = find(n_sol_t(i)==y(j).n & m_sol_t(i)==y(j).m);
+        y_total(:,1,i) = y(1).y(:,1,1); 
         if isempty(ind)==0
-            y_total(:,2:end,i)=y_total(:,2:end,i) + Forcing(j).F*y(j).y(:,2:end,ind); 
+            y_total(:,2:end,i) = y_total(:,2:end,i) + Forcing(j).F*y(j).y(:,2:end,ind); 
         end
     end
 end
 %% strain and stress tensor and the - component 
-stressP=zeros(Numerics.Nr+1,6,length(n_sol_t));
-strainP=zeros(Numerics.Nr+1,6,length(n_sol_t));
-stressN=zeros(Numerics.Nr+1,6,length(n_sol_t));
-strainN=zeros(Numerics.Nr+1,6,length(n_sol_t));
+stressP = zeros(Numerics.Nr+1,6,length(n_sol_t));
+strainP = zeros(Numerics.Nr+1,6,length(n_sol_t));
+stressN = zeros(Numerics.Nr+1,6,length(n_sol_t));
+strainN = zeros(Numerics.Nr+1,6,length(n_sol_t));
 
 % Fill the Stress and Strain tensors
 for i=1:length(n_sol_t)
-    index_auxN=find(n_sol_t==n_sol_t(i) & m_sol_t==-m_sol_t(i));
-    stressP(:,:,i)=y_total(:,[14 15 16 17 18 13],i);
-    strainP(:,:,i)=y_total(:,[20 21 22 23 24 19],i);
-    stressN(:,:,i)=conj(y_total(:,[14 15 16 17 18 13],index_auxN)); 
-    strainN(:,:,i)=conj(y_total(:,[20 21 22 23 24 19],index_auxN));
+    index_auxN = find(n_sol_t==n_sol_t(i) & m_sol_t==-m_sol_t(i));
+    stressP(:,:,i) = y_total(:,[14 15 16 17 18 13],i);
+    strainP(:,:,i) = y_total(:,[20 21 22 23 24 19],i);
+    stressN(:,:,i) = conj(y_total(:,[14 15 16 17 18 13],index_auxN)); 
+    strainN(:,:,i) = conj(y_total(:,[20 21 22 23 24 19],index_auxN));
 end
 
 % Retrieve the radial points
-r=y(1).y(:,1,1);
+r = y(1).y(:,1,1);
 
 %% (2) GET COUPLINGS ENERGY SPECTRA
 % obtain name of the coupling file
-str_forc=[];
+str_forc = [];
+
 % Check whether there are any uniform layers
 uniformlayers = [];
 for ilayer=2:Numerics.Nlayers
@@ -262,9 +264,9 @@ uniformlayers = uniformlayers == 0;
 % Generate the forcing term string
 for i=1:length(Forcing)
     if i==length(Forcing)
-        str_forc=[str_forc num2str(Forcing(i).n) '_' num2str(Forcing(i).m)];
+        str_forc = [str_forc num2str(Forcing(i).n) '_' num2str(Forcing(i).m)];
     else
-        str_forc=[str_forc num2str(Forcing(i).n) '_' num2str(Forcing(i).m) '__'];
+        str_forc = [str_forc num2str(Forcing(i).n) '_' num2str(Forcing(i).m) '__'];
     end
 end
 
@@ -277,83 +279,142 @@ end
 
 % If there is only one non-uniform layer obtain couplings from large file
 if any(uniformlayers)   
-    % Generate coupling file name
-    coupling_file_name=[Numerics.coupling_file_location 'E_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
-        str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
+    % Decide whether to load from a file containing all the modes for this specific rheology and settings 
+    % or coupling coefficients from a large generic file
+
+    if Numerics.load_couplings == 1 % Load from specific file
+        % Remove rheology terms with 0 amplitude 
+        % Fill an array with all the used degree and orders (contains duplicates)
+        for ilayer=2:Numerics.Nlayers
+            non_zero_rheo = find(abs(Interior_Model(ilayer).rheology_variable(:,4)) > 0);
+            Interior_Model(ilayer).rheology_variable = Interior_Model(ilayer).rheology_variable(non_zero_rheo,:);
+            if ilayer == 2
+                rheo_degree_orders = Interior_Model(ilayer).rheology_variable(:,1:2);
+            else
+                rheo_degree_orders = [rheo_degree_orders ; Interior_Model(ilayer).rheology_variable(:,1:2)];
+            end
+        end
     
-    % look if there is a file that contains the couplings
-    coupling_file_name_search=[Numerics.coupling_file_location 'E_struct__Nrheomax__*__forc__' str_forc '__N__*__per*.mat'];
-    possible_couplings_files=dir(coupling_file_name_search);
-    file_found=0;
-    i=1; 
-    potential_coupling_files = [];
-    rheo_max_file_list = [];
-
-    % Select the smallest possible file that contains all the couplings
-    while i<=length(possible_couplings_files)
-        per_start=strfind(possible_couplings_files(i).name,'_per')+4;
-        per_end=strfind(possible_couplings_files(i).name,'.mat')-1;
-        perturbation_order_file=str2num(possible_couplings_files(i).name(per_start:per_end));
-        rheo_start=strfind(possible_couplings_files(i).name,'Nrheomax__')+10;
-        rheo_end=strfind(possible_couplings_files(i).name,'__forc')-1;
-        Nrheomax_file=str2num(possible_couplings_files(i).name(rheo_start:rheo_end));
-        Nenergy_start=strfind(possible_couplings_files(i).name,'__N__')+5;
-        Nenergy_end=strfind(possible_couplings_files(i).name,'__per')-1;
-        Nenergy_file=str2num(possible_couplings_files(i).name(Nenergy_start:Nenergy_end));
-
-        % Check whether the file fullfills the criteria and add it to the list
-        if Nrheomax_file>=Numerics.Nrheo_max && perturbation_order_file>=Numerics.perturbation_order && Nenergy_file >= Numerics.Nenergy
-            interim_name = [Numerics.coupling_file_location possible_couplings_files(i).name];
-            potential_coupling_files = [potential_coupling_files convertCharsToStrings(interim_name)];
-            rheo_max_file_list = [rheo_max_file_list Nrheomax_file];
-        end
-        i=i+1;
-    end
-    
-    % If suitable files have been found select the smallest one
-    if ~isempty(potential_coupling_files)
-        [~,ind] = min(rheo_max_file_list);
-        coupling_file_name = potential_coupling_files(ind);
-        file_found=1; 
-    end
-
-    % Coupling file exist 
-    if file_found==1 
-        if verbose==1
-            disp([' Energy Couplings Loaded from: ' convertStringsToChars(coupling_file_name)])
-            tic
-        end
-
-        % Retrieve the coupling coefficients that are required
-        Couplings = retrieve_energy_couplings_from_file(n_sol_t,m_sol_t,Numerics.Nenergy,coupling_file_name);
-
-        if verbose==1
-            disp(['Loading coupling file took: ' num2str(toc) ' seconds'])
-        end
-    else %compute couplings 
-        if verbose==1
-            tic
-            disp(['File ' coupling_file_name 'not found. Computing all coupling coefficients, this might take some time..'])
-            Couplings = get_energy_couplings_all(Numerics.perturbation_order,Numerics.Nrheo_max,Numerics.Nenergy,Forcing,Numerics,'verbose');
-            disp(['Time Spent: ' num2str(toc) 's'])
-            disp([' File stored in: ' coupling_file_name])
-        else
-            Couplings = get_energy_couplings_all(Numerics.perturbation_order,Numerics.Nrheo_max,Numerics.Nenergy,Forcing,Numerics);
-        end
-
-        % Save the file
-        save(coupling_file_name,'-struct','Couplings','-v7.3')
+        % Remove duplicates from rheo_degree_orders
+        rheo_degree_orders = unique(rheo_degree_orders,'rows');
         
-        % Retrieve the coupling coefficients that are required
-        Couplings = retrieve_energy_couplings(n_sol_t,m_sol_t,Numerics.Nenergy,Couplings);
-    end
+        % Fill character array with all unique rheology modes
+        str_rheo = [];
+        for i=1:size(rheo_degree_orders,1)
+            str_rheo = [str_rheo num2str(rheo_degree_orders(i,1)) '_' num2str(rheo_degree_orders(i,2)) '__'];
+        end
+
+        % Generate coupling file name
+        coupling_file_name = [Numerics.coupling_file_location 'E_rheo__' str_rheo 'forc__' str_forc '__N__' ... 
+                              num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
+        
+        % Check if the file has already been computed
+        if isfile(coupling_file_name)==1 % load couplings
+            if verbose==1
+                disp(['Coupling Loaded from: ' coupling_file_name])
+                tic
+            end
+            
+            % Load couplings file
+            Couplings = load(coupling_file_name);
+
+            if verbose==1
+                disp(['Loading coupling file took: ' num2str(toc) ' seconds'])
+            end
+        else % compute couplings
+            if verbose==1
+                tic
+                disp(['File ' coupling_file_name ' not found. Computing all coupling coefficients, this might take some time..'])
+                Couplings = get_energy_couplings(n_sol_t,m_sol_t,Numerics,'verbose');
+                disp(['Time Spent: ' num2str(toc) 's'])
+                disp(['File stored in: ' coupling_file_name])
+            else
+                Couplings = get_energy_couplings(n_sol_t,m_sol_t,Numerics,'verbose');
+            end
+            
+            % Save couplings for all terms
+            save(coupling_file_name,'-struct','Couplings','-v7.3')
+        end
+
+    elseif Numerics.load_couplings == 2 % Load from bigger/generic file
+        % Generate coupling file name
+        coupling_file_name = [Numerics.coupling_file_location 'E_struct__Nrheomax__' num2str(Numerics.Nrheo_max) '__forc__' ...
+            str_forc '__N__' num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
+        
+        % look if there is a file that contains the couplings
+        coupling_file_name_search = [Numerics.coupling_file_location 'E_struct__Nrheomax__*__forc__' str_forc '__N__*__per*.mat'];
+        possible_couplings_files = dir(coupling_file_name_search);
+        file_found = 0;
+        i = 1; 
+        potential_coupling_files = [];
+        rheo_max_file_list = [];
     
+        % Select the smallest possible file that contains all the couplings
+        while i<=length(possible_couplings_files)
+            per_start = strfind(possible_couplings_files(i).name,'_per')+4;
+            per_end = strfind(possible_couplings_files(i).name,'.mat')-1;
+            perturbation_order_file = str2num(possible_couplings_files(i).name(per_start:per_end));
+            rheo_start = strfind(possible_couplings_files(i).name,'Nrheomax__')+10;
+            rheo_end = strfind(possible_couplings_files(i).name,'__forc')-1;
+            Nrheomax_file = str2num(possible_couplings_files(i).name(rheo_start:rheo_end));
+            Nenergy_start = strfind(possible_couplings_files(i).name,'__N__')+5;
+            Nenergy_end = strfind(possible_couplings_files(i).name,'__per')-1;
+            Nenergy_file = str2num(possible_couplings_files(i).name(Nenergy_start:Nenergy_end));
+    
+            % Check whether the file fullfills the criteria and add it to the list
+            if Nrheomax_file>=Numerics.Nrheo_max && perturbation_order_file>=Numerics.perturbation_order && Nenergy_file >= Numerics.Nenergy
+                interim_name = [Numerics.coupling_file_location possible_couplings_files(i).name];
+                potential_coupling_files = [potential_coupling_files convertCharsToStrings(interim_name)];
+                rheo_max_file_list = [rheo_max_file_list Nrheomax_file];
+            end
+            i=i+1;
+        end
+        
+        % If suitable files have been found select the smallest one
+        if ~isempty(potential_coupling_files)
+            [~,ind] = min(rheo_max_file_list);
+            coupling_file_name = potential_coupling_files(ind);
+            file_found=1; 
+        end
+    
+        % Coupling file exist 
+        if file_found==1 
+            if verbose==1
+                disp([' Energy Couplings Loaded from: ' convertStringsToChars(coupling_file_name)])
+                tic
+            end
+    
+            % Retrieve the coupling coefficients that are required
+            Couplings = retrieve_energy_couplings_from_file(n_sol_t,m_sol_t,Numerics.Nenergy,coupling_file_name);
+    
+            if verbose==1
+                disp(['Loading coupling file took: ' num2str(toc) ' seconds'])
+            end
+        else % Compute couplings 
+            if verbose==1
+                tic
+                disp(['File ' coupling_file_name ' not found. Computing all coupling coefficients, this might take some time..'])
+                Couplings = get_energy_couplings_all(Forcing,Numerics,'verbose');
+                disp(['Time Spent: ' num2str(toc) 's'])
+                disp(['File stored in: ' coupling_file_name])
+            else
+                Couplings = get_energy_couplings_all(Forcing,Numerics);
+            end
+    
+            % Save the file
+            save(coupling_file_name,'-struct','Couplings','-v7.3')
+            
+            % Retrieve the coupling coefficients that are required
+            Couplings = retrieve_energy_couplings(n_sol_t,m_sol_t,Numerics.Nenergy,Couplings);
+        end
+    end
+
     % Extract relevant information from struct
     EC = Couplings.EC;
     n_en = Couplings.n_en;
     m_en = Couplings.m_en;
 
-    % Dubble-check whether the solution modes used in the coupling matrix are the
+    % Double-check whether the solution modes used in the coupling matrix are the
     % same as in the actual solution
     if any(~(n_sol_t == Couplings.n_s)) && any(~(m_sol_t == Couplings.m_s))
         error('Error. \nModes used in the coupling matrix are not the same as in the current solution')
@@ -361,14 +422,15 @@ if any(uniformlayers)
 
     % Delete the potentially large struct from memory
     clear Couplings
+
 else
     if verbose==1
         disp('Only uniform layers so coupling matrix is simple')
     end
 
     % Set coupling file name
-    coupling_file_name=[Numerics.coupling_file_location 'E__rheo__0_0__forc__' str_forc '__N__' ...
-                       num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
+    coupling_file_name = [Numerics.coupling_file_location 'E__rheo__0_0__forc__' str_forc '__N__' ...
+                          num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
     
     % Check whether the file exists
     if isfile(coupling_file_name)==1
@@ -376,17 +438,33 @@ else
         if verbose==1
             disp([' Energy couplings loaded from: ' coupling_file_name])
         end
-        load(coupling_file_name);
+        Couplings = load(coupling_file_name);
+        
+        % Extract relevant information from struct
+        EC = Couplings.EC;
+        n_en = Couplings.n_en;
+        m_en = Couplings.m_en;
+
     else
         if verbose==1
-            disp([' Computing energy couplings...'])
+            disp(' Computing energy couplings...')
             tic
+            Couplings = get_energy_couplings(n_sol_t,m_sol_t,Numerics,'verbose');
+        else
+            Couplings = get_energy_couplings(n_sol_t,m_sol_t,Numerics);
         end
-        [EC,n_en,m_en] = couplings_energy(n_sol_t,m_sol_t,Numerics.Nenergy);
-        save(coupling_file_name,'EC','n_en','m_en');
+         
+        % Save the file
+        save(coupling_file_name,'-struct','Couplings','-v7.3')
+
+        % Extract relevant information from struct
+        EC = Couplings.EC;
+        n_en = Couplings.n_en;
+        m_en = Couplings.m_en;
+
         if verbose==1
             disp(['Time Spent: ' num2str(toc) 's'])
-            disp([' File stored in: ' coupling_file_name])
+            disp(['File stored in: ' coupling_file_name])
         end
     end
 end
@@ -407,13 +485,15 @@ if verbose==1
     disp('Computing energy spectra...')
     tic
 end
-energy=zeros(length(r),length(n_en));
-energy_s=zeros(1,length(n_en)); 
+% [energy,energy_s] = get_energy_matrix_mex(r,n_en,n_sol_t,m_sol_t,EC,stressN,stressP,strainN,strainP);
+
+energy = zeros(length(r),length(n_en));
+energy_s = zeros(1,length(n_en)); 
 
 % variable to store all the contributions 
 if calc_E_contributions == 1
-    energy_contribution=zeros(length(r),length(n_en),length(n_sol_t),length(n_sol_t));
-    energy_contribution_s=zeros(1,length(n_en),length(n_sol_t),length(n_sol_t));
+    energy_contribution = zeros(length(r),length(n_en),length(n_sol_t),length(n_sol_t));
+    energy_contribution_s = zeros(1,length(n_en),length(n_sol_t),length(n_sol_t));
 end
 
 % Radial difference between all radial points
@@ -460,7 +540,7 @@ for n=1:length(n_en)
             end
         end
     end
-    
+
     % Radial integration 
     energy_s(n) = sum(radialdiff.*(energy(2:end,n) + energy(1:end-1,n))/2, 1);
     % energy_s(n) = trapz(r, energy(:,n) .* r.^2);
@@ -474,10 +554,10 @@ if verbose==1
 end
 
 %% (4) SET IN OUTPUT FORMAT 
-Energy_Spectra.n=n_en;
-Energy_Spectra.m=m_en;
-Energy_Spectra.energy_integral=energy_s;
-Energy_Spectra.energy=energy;
+Energy_Spectra.n = n_en;
+Energy_Spectra.m = m_en;
+Energy_Spectra.energy_integral = energy_s;
+Energy_Spectra.energy = energy;
 if calc_E_contributions == 1
     Energy_Spectra.energy_contribution = energy_contribution_s;
 end
