@@ -93,22 +93,8 @@ if Interior_Model.mu_variable(3)~=0 || Interior_Model.K_variable(3)~=0  || Inter
     end
 end
 
-% figure; 
-% subplot(2,2,1); pcolor(SPH(1).lon,SPH(1).lat,real(SPH(4).Y)) ; colorbar; shading interp
-% subplot(2,2,2); pcolor(SPH(1).lon,SPH(1).lat,imag(SPH(4).Y)); colorbar; shading interp
-% subplot(2,2,3); pcolor(SPH(1).lon,SPH(1).lat,real(SPH(7).Y)); colorbar; shading interp
-% subplot(2,2,4); pcolor(SPH(1).lon,SPH(1).lat,imag(SPH(7).Y)); colorbar; shading interp
-% 
-% th = linspace(0,pi,50);    % inclination
-% phi = linspace(-pi,pi,50); % azimuth
-% [th,phi] = meshgrid(th,phi);
-% figure; 
-% subplot(2,2,1); pcolor(phi,pi/2-th,real(harmonicY(1,1,th,phi))); colorbar; shading interp
-% subplot(2,2,2); pcolor(phi,pi/2-th,imag(harmonicY(1,1,th,phi))); colorbar; shading interp
-% subplot(2,2,3); pcolor(phi,pi/2-th,real(harmonicY(2,0,th,phi))); colorbar; shading interp
-% subplot(2,2,4); pcolor(phi,pi/2-th,imag(harmonicY(2,0,th,phi))); colorbar; shading interp
-y_LatLon.mu=(Interior_Model.muC+mu_map);
-%y_LatLon.mu=1+mu_map; 
+y_LatLon.mu=(Interior_Model.muC+Interior_Model.mu*mu_map);
+
 % get forcing map 
 y_LatLon.forcing=zeros(size(SPH(1).lon,1),size(SPH(1).lon,2));
 ind=find(y_LatLon.nf==n_SPH & y_LatLon.mf==m_SPH);

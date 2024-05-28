@@ -429,9 +429,11 @@ else
     end
 
     % Set coupling file name
+    if isfield(Numerics,'coupling_file_location')==0
+        Numerics.coupling_file_location='data/couplings/';
+    end
     coupling_file_name = [Numerics.coupling_file_location 'E__rheo__0_0__forc__' str_forc '__N__' ...
                           num2str(Numerics.Nenergy) '__per' num2str(Numerics.perturbation_order) '.mat'];
-    
     % Check whether the file exists
     if isfile(coupling_file_name)==1
         % coupling file exist and does not need to be computed

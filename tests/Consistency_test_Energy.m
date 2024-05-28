@@ -234,8 +234,7 @@ Interior_Model_Uni = get_rheology(Interior_Model_Uni,Numerics,Forcing);
 %obtains the Love number spectra
 
 for i=1:length(Forcing)
-    [Love_Spectra_Uni(i),y_Uni(i)]=get_Love(Interior_Model_Uni,Forcing(i),Numerics, ...
-                                            'verbose');
+    [Love_Spectra_Uni(i),y_Uni(i)]=get_Love(Interior_Model_Uni,Forcing(i),Numerics, ...                                            'verbose');
     % lateral variations
     [Love_Spectra(i),y(i)]=get_Love(Interior_Model,Forcing(i),Numerics,'verbose');
 end
