@@ -1,4 +1,11 @@
 .DS_Store
 **/.DS_Store
 /data
+!/data/tests
 !/data/README.md
+/files/couplings
+/files/output
+*.asv
+**/*.asv
+/tests/Io_SS.m
+/scripts

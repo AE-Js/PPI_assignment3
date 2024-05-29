@@ -5,9 +5,9 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 
-**LOV3D** is a Matlab package for obtaining the tidal response of viscoelastic self-gravitating bodies with lateral variations of interior properties. For a given interior structure and tidal load, the software solves the mass conservation, momentum conservation and Poisson equations and computes the tidal Love numbers. This is done in the spectral domain as detailed in Rovira-Navarro et al. 2023. a
+**LOV3D** is a Matlab package for obtaining the tidal response of viscoelastic self-gravitating bodies with lateral variations of interior properties. For a given interior structure and tidal load, the software solves the mass conservation, momentum conservation and Poisson equations and computes the tidal Love numbers. This is done in the spectral domain as detailed in [Rovira-Navarro et al. 2023](https://arxiv.org/abs/2311.15710).
 
-![plot](./Plots_Out/Figure7b.png)
+![logo](./docs/logo.png)
 
 
 ## Requirements
@@ -25,64 +25,39 @@ The code uses the following third-party libraries:
 
 ## Usage
 
-A test-run that uses Io as an example can be found in ['example.m'](Scripts/example.m). When running the script `./Scripts/example.m` 14 figures will be generated. In addition to that, the following will be printed out in the command window of MATLAB:
+See the manual in `./docs` for information on inputs and outputs of the code.
 
-```
-Difference between energy computation with method 1 and 2 for the uniform model 0.056533 \%
-Difference between energy computation with method 1 and 2 for a model with lateral variations 0.056538 \%
-Tidal heating spherically-symmetric model 2.1341 W/m^2
-Tidal heating laterally-heterogenous model 2.1917 W/m^2
-```
+The `tests/` directory contains several examples
 
-See the manual in `./Docs` for information on inputs and outputs of the code.
+- [**One layer, spherically-symmetric**](./tests/Test_One_Layer_Spherically_Symmetric.mlx): Compares LOV3D Love numbers against love numbers obtained analytically for a uniform spherically-symmetric body
+- [**Multi-layered Spherically-symmetric**](./tests/Test_Io_Multi_Layer_Spherically_Symmetric.mlx): Multi-layered Io model based on [Steinke et al. 2020](https://doi.org/10.1016/j.icarus.2019.05.001), consisting of core, deep mantle, asthenosphere and lithosphere. The script obtains the Love numbers and compares them against results obtained with the spherically-symmetric code of  [Rovira-Navarro et al. 2022](https://doi.org/10.1029/2021JE007117). 
+- [**Multi-layered Spherically-symmetric_Tidal_Heating**](./tests/Test_Io_Multi_Layer_Spherically_Symmetric_Tidal_Heating.mlx): Same as the previous test but:
+	- (1) tidal heating is computed using  [get_energy.m](./src/get_energy.m)
+	- (2) the geographical distribution of tidal heating is shown using the [plot_energy_map.m](./src/Plot_Tools/plot_energy_map.m) plotting function. 
+	- (3) the y functions are computed and plotted using [get_map.m](../src/get_map.m) and [plot_map.m](./src/Plot_Tools/plot_map.m) 
+- [**Multi-layered spherically-symmetric icy moon**](./tests/Test_Europa_Titan_Spherically_Symmetric.mlx): Multi-layered icy moon model. The script computes the Love numbers for a multi-layered Europa and Titan models based on [Beuthe et al. 2013](https://www.sciencedirect.com/science/article/pii/S0019103512004745?casa_token=xg0XfpmaHT4AAAAA:Qau6ppdURvhX_Vgm_NiDZVwEtERNnqcosVviHYGaLIHJLBugG7ZgBEnHNPG921Qc5SZAktQ6kw). 
+- [**Enceladus with lateral variations**](./tests/Test_Enceladus_Two_Layers_Lateral_Variations.mlx): 3 layer Enceladus model consisting of a rigid core, ocean and ice-shell with lateral variations. Compares LOV3D Love numbers against love numbers obtained using the perturbation method of [Qin et al.](https://doi.org/10.1093/gji/ggu279) and the FEM model of [Berne et al.](https://doi.org/10.1029/2023GL106656). Reproduces Figure 2 of [Rovira et al. 2024](https://doi.org/10.48550/arXiv.2311.15710)
+- [**Europa with lateral variations**](./tests/Test_Europa_Lateral_Variations.mlx): Europa model with lateral variations. The script computes the Love number spectra and the y functions. The script also uses the [plot_y.m](./src/Plot_Tools/plot_y.m) to plot the "y" functions (U,V,W,R,S,T, phi). 
+- [**Consistency check tidal heating**](Consistency_test_Energy.m): This script can computes tidal heating using the Love numbers or the direct integration of the product of stress and strain rate and compares the results.  
+
 
 
 ## Structure 
 
 In this repository you can find the following directories: 
 
-```
-.
-├─── Docs
-├─── Files_Coupling
-├─── Files_Out
-├─── Functions
-│   ├─── Plot_Tools
-│   │   ├─── altmany-export_fig-3
-│   │   │   └─── resources
-│   │   │       └─── project
-│   │   │           ├─── Extensions.type.Root
-│   │   │           │   └─── DependencyAnalysis.type.Extension
-│   │   │           ├─── Root.type.Categories
-│   │   │           │   └─── FileClassCategory.type.Category
-│   │   │           ├─── Root.type.Files
-│   │   │           └─── Root.type.ProjectPath
-│   │   ├─── cmocean
-│   │   │   └─── html
-│   │   └─── m_map
-│   │       ├─── doc
-│   │       └─── private
-│   └─── SPH_Tools
-│       ├─── harmonicY
-│       └─── Wigner
-├─── LICENSES
-├─── Plots_Out
-├─── README.md
-└─── Scripts
 
-```
-
-
-- ` Files_Coupling/` is where the coupling files used to compute the coupling coefficients are stored  
-- ` Files_Out/` is where the output of the code is written  
-- ` Functions/` contains the functions and subroutines used in the code    
-- ` Scripts/` contains the example script (`example.m`) to run the code  
-- ` Docs/` contains the manual   
+- ` data/` contains data used in the code, including the coupling coefficients 
+- ` docs/` documentation, including a user manual 
+- ` licenses/` licenses of current software and some external routines used in the code 
+- ` scripts/` some scripts that use the code 
+- ` src/` source code 
+- `tests/ ` contains several tests an examples 
 
 
 ## Documentation 
 
-The theory behind the method is detailed in Rovira-Navarro et al. 2023. A manual can be found in ` Docs/`
+The theory behind the method is detailed in [Rovira-Navarro et al. 2023](https://arxiv.org/abs/2311.15710). A user manual can be found in ` Docs/`
 
 
 ## Author (s)
@@ -117,26 +92,28 @@ Licenses and copyright statements for [cmocean](https://github.com/chadagreene/c
 
 ## References
 
-- (Rovira-Navarro, M., Matsuyama, I., Berne, A. 2023)[https://arxiv.org/abs/2311.15710]. A Spectral Method to Compute the Tides of Laterally-Heterogeneous Bodies. arXiv e-prints. doi:10.48550/arXiv.2311.15710
+This software have been used in the following publications
+
+- [Rovira-Navarro, M., Matsuyama, I., Berne, A. 2023](https://arxiv.org/abs/2311.15710). A Spectral Method to Compute the Tides of Laterally-Heterogeneous Bodies. arXiv e-prints. doi:10.48550/arXiv.2311.15710
 - Rovira-Navarro, M.,Matsuyama, I. & Berne, A., 2023 Revealing lateral structures in the interiors of planets and moons from tidal observations. AGU Fall Meeting Abstracts (2023).  
-- (Rovira-Navarro, M. & Matsuyama, I. 2022)[https://ui.adsabs.harvard.edu/abs/2022AGUFM.P45E2514R/abstract]., A Spectral Method to Study the Tides of Laterally Heterogenous Bodies.  AGU Fall Meeting Abstracts.  
+- [Rovira-Navarro, M. & Matsuyama, I. 2022](https://ui.adsabs.harvard.edu/abs/2022AGUFM.P45E2514R/abstract)., A Spectral Method to Study the Tides of Laterally Heterogenous Bodies.  AGU Fall Meeting Abstracts.  
 
 
 ## Cite this repository 
 
 If you use this software please cite it as:
 
-- (Rovira-Navarro, M., Matsuyama, I., Berne, A. 2023)[https://arxiv.org/abs/2311.15710]. A Spectral Method to Compute the Tides of Laterally-Heterogeneous Bodies. arXiv e-prints. doi:10.48550/arXiv.2311.15710
-
+- (Rovira-Navarro, M., Matsuyama, I., Berne, A. 2023)[https://doi.org/10.3847/PSJ/ad381f]. A Spectral Method to Compute the Tides of Laterally-Heterogeneous Bodies. Planetary Science Journal, 5
 
 ## Would you like to contribute?
-The git-flow branching approach is used. The following branches exists
-- matser: stable branch of the code (only to be updated with new releases)
-- dev: development branch 
-- feauture: branches where new feautres are being developed. Use git flow feauture start <MYFEAUTURE> to create a new feauture and git flow feauture finish MYFEATURE to merge it back to dev. 
-- release/vX.X.X: a particular relase of the code, use git flow release start <RELEASE NAME>  and git flow release finish <RELASE NAME> to merge it back with dev
 
-For questions and queries contact M. Rovira-Navarrro at m.roviranavarro@tudelft.nl
+If you have any questions or queries or would like to contribute contact M. Rovira-Navarrro at m.roviranavarro@tudelft.nl
+
+Future developments include: 
+- Extend the code to other loadings (e.g., surface loads)
+- Benchmark with FEM-viscoelastic code
+
+Found a bug? Report and "Issue" in the issue's tab. 
 
 
 
