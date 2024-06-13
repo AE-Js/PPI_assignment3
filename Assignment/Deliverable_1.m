@@ -19,23 +19,24 @@ omega_io = 4.1086E-05; % orbital frequency in rad/s
 T_io = 2 * pi / omega_io; % orbital period in s
 
 % % Interior Model --- IN DIMENSIONAL UNITS
-eta_avg = 1e20; % avg shear viscosity in Pa.s
+eta_avg = 1e19; % avg shear viscosity in Pa.s
 mu_avg = 60e9; % avg shear modulus in Pa
+rho_avg = 3263; % avg density in kg/m3
 
 % Core boundary layer (1)
 Interior_Model(1).R0 = 1e-3 * R_io; % approx 0
-Interior_Model(1).rho0 = rho_avg_io;
+Interior_Model(1).rho0 = rho_avg;
 
 % Single body layer (2)
 Interior_Model(2).R0 = R_io;
-Interior_Model(2).rho0 = rho_avg_io;
+Interior_Model(2).rho0 = rho_avg;
 Interior_Model(2).mu0 = mu_avg;
 Interior_Model(2).eta0 = eta_avg;
 
 % LATERAL VARIATIONS
 % Spherically-symmetric model assumed
 % compute effective shear modulus
-mu_eff = mu_avg / ( rho_avg_io ^ 2 * ( R_io * 1e3 ) ^ 2 * 4 / 3 * pi * G );
+mu_eff = mu_avg / ( rho_avg ^ 2 * ( R_io * 1e3 ) ^ 2 * 4 / 3 * pi * G );
 
 % forcing
 Forcing(1).Td = T_io;
