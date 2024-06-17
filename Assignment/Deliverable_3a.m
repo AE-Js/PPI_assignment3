@@ -10,15 +10,16 @@ cd(pathstr);
 cd('..')
 addpath(genpath(pwd))
 format long
-% parameters
+% Io parameters
 G = 6.67430E-11;
-Rad = 1000; % Radius in [km] !!!!!!!!!!!!! WHY MUST THE BE IN KM? THE REST IS ALL BASE SI UNITS. THIS CODE IS STUPID
-omega = 1E-05; % orbital frequency in rad/s
-T_orb = 2 * pi / omega; % orbital period in s
+R_io = 1821.6; % R_ioius in [km] !!!!!!!!!!!!! WHY MUST THE BE IN KM? THE REST IS ALL BASE SI UNITS. THIS CODE IS STUPID
+M_io = 8.931938e22; % mass in kg
+omega_io = 4.1086E-05; % orbital frequency in rad/s
+T_io = 2 * pi / omega_io; % orbital period in s
 
 eta_avg = 1e19; % avg shear viscosity in Pa.s
 mu_avg = 60e9; % avg shear modulus in Pa
-rho_avg = 3000; % avg density in kg/m3
+rho_avg = 3263; % avg density in kg/m3
 K_avg = 200e9; % avg bulk modulus in Pa
 
 % % % % % % % % % % % % % %
@@ -39,34 +40,34 @@ Numerics.load_couplings = 1; % 0=no loading, 1=loading of specific file, 2=searc
 Numerics.Nenergy = 12; % maximum degree to which energy dissipation is expanded 
 Numerics.rheology_cutoff = 2; % maximum order of difference (so in log) up to which rheology is still used 
 
-mu_eff = mu_avg / ( rho_avg ^ 2 * ( Rad * 1e3 ) ^ 2 * 4 / 3 * pi * G );
+mu_eff = mu_avg / ( rho_avg ^ 2 * ( R_io * 1e3 ) ^ 2 * 4 / 3 * pi * G );
 
 % % % % % % % % % % % % % %
 % Elastic model : no eta  %
 % % % % % % % % % % % % % %
 
 % Core boundary layer (1)
-Elastic_model(1).R0 = 1e-3 * Rad; % approx 0
+Elastic_model(1).R0 = 1e-3 * R_io; % approx 0
 Elastic_model(1).rho0 = rho_avg;
 
 % Single body layer (2)
-Elastic_model(2).R0 = Rad;
+Elastic_model(2).R0 = R_io;
 Elastic_model(2).rho0 = rho_avg;
 Elastic_model(2).mu0 = mu_avg;
 Elastic_model(2).Ks0 = K_avg;
 
 % forcing
-Forcing_e(1).Td = T_orb;
+Forcing_e(1).Td = T_io;
 Forcing_e(1).n = 2; 
 Forcing_e(1).m = 0; 
 Forcing_e(1).F = 1;
 
-[Numerics, Elastic_model] = set_boundary_indices(Numerics, Elastic_model,'empty');
-Elastic_model = get_rheology(Elastic_model, Numerics, Forcing_e);
-[Love_Spectra_e, y_e] = get_Love(Elastic_model, Forcing_e, Numerics,'empty');
+[Numerics, Elastic_model1] = set_boundary_indices(Numerics, Elastic_model,'empty');
+Elastic_model2 = get_rheology(Elastic_model1, Numerics, Forcing_e);
+[Love_Spectra_e, y_e] = get_Love(Elastic_model2, Forcing_e, Numerics,'empty');
 
 % obtain the Fourier-transformed effective shear modulus
-mu_eff_hat_e = mu_eff * Elastic_model(2).muC;
+mu_eff_hat_e = mu_eff * Elastic_model2(2).muC;
 % compute Love numbers using analytical expression
 n_e = Forcing_e.n; 
 mu_n_e = ( 2 * n_e ^ 2 + 4 * n_e + 3 ) / n_e * mu_eff_hat_e;
@@ -88,28 +89,28 @@ disp([' % % % % % % % % % % % % % '])
 % % % % % % % % % % % % % %
 
 % Core boundary layer (1)
-Visco_elas_model(1).R0 = 1e-3 * Rad; % approx 0
+Visco_elas_model(1).R0 = 1e-3 * R_io; % approx 0
 Visco_elas_model(1).rho0 = rho_avg;
 
 % Single body layer (2)
-Visco_elas_model(2).R0 = Rad;
+Visco_elas_model(2).R0 = R_io;
 Visco_elas_model(2).rho0 = rho_avg;
 Visco_elas_model(2).mu0 = mu_avg;
 Visco_elas_model(2).eta0 = eta_avg;
 Visco_elas_model(2).Ks0 = K_avg;
 
 % forcing
-Forcing_ve(1).Td = T_orb;
+Forcing_ve(1).Td = T_io;
 Forcing_ve(1).n = 2; 
 Forcing_ve(1).m = 0; 
 Forcing_ve(1).F = 1;
 
-[Numerics, Visco_elas_model] = set_boundary_indices(Numerics, Visco_elas_model,'empty');
-Visco_elas_model = get_rheology(Visco_elas_model, Numerics, Forcing_ve);
-[Love_Spectra_ve, y_ve] = get_Love(Visco_elas_model, Forcing_ve, Numerics,'empty');
+[Numerics, Visco_elas_model1] = set_boundary_indices(Numerics, Visco_elas_model,'empty');
+Visco_elas_model2 = get_rheology(Visco_elas_model1, Numerics, Forcing_ve);
+[Love_Spectra_ve, y_ve] = get_Love(Visco_elas_model2, Forcing_ve, Numerics,'empty');
 
 % obtain the Fourier-transformed effective shear modulus
-mu_eff_hat_ve = mu_eff * Visco_elas_model(2).muC;
+mu_eff_hat_ve = mu_eff * Visco_elas_model2(2).muC;
 % compute Love numbers using analytical expression
 n_ve = Forcing_ve.n; 
 mu_n_ve = ( 2 * n_ve ^ 2 + 4 * n_ve + 3 ) / n_ve * mu_eff_hat_ve;
@@ -131,11 +132,11 @@ disp([' % % % % % % % % % % % % % '])
 % % % % % % % % % % % % % %
 
 % Core boundary layer (1)
-Ideal_fluid_model(1).R0 = 1e-3 * Rad; % approx 0
+Ideal_fluid_model(1).R0 = 1e-3 * R_io; % approx 0
 Ideal_fluid_model(1).rho0 = rho_avg;
 
 % Single body layer (2)
-Ideal_fluid_model(2).R0 = Rad;
+Ideal_fluid_model(2).R0 = R_io;
 Ideal_fluid_model(2).rho0 = rho_avg;
 Ideal_fluid_model(2).mu0 = mu_avg;
 Ideal_fluid_model(2).eta0 = eta_avg;
@@ -147,12 +148,12 @@ Forcing_if(1).n = 2;
 Forcing_if(1).m = 0; 
 Forcing_if(1).F = 1;
 
-[Numerics, Ideal_fluid_model] = set_boundary_indices(Numerics, Ideal_fluid_model,'empty');
-Ideal_fluid_model = get_rheology(Ideal_fluid_model, Numerics, Forcing_if);
-[Love_Spectra_if, y_if] = get_Love(Ideal_fluid_model, Forcing_if, Numerics,'empty');
+[Numerics, Ideal_fluid_model1] = set_boundary_indices(Numerics, Ideal_fluid_model,'empty');
+Ideal_fluid_model2 = get_rheology(Ideal_fluid_model1, Numerics, Forcing_if);
+[Love_Spectra_if, y_if] = get_Love(Ideal_fluid_model2, Forcing_if, Numerics,'empty');
 
 % obtain the Fourier-transformed effective shear modulus
-mu_eff_hat_if = mu_eff * Ideal_fluid_model(2).muC;
+mu_eff_hat_if = mu_eff * Ideal_fluid_model2(2).muC;
 % compute Love numbers using analytical expression
 n_if = Forcing_if.n; 
 mu_n_if = ( 2 * n_if ^ 2 + 4 * n_if + 3 ) / n_if * mu_eff_hat_if;
@@ -168,13 +169,3 @@ disp(['h analytical: ' num2str(h2_analytic_if)])
 disp(['h LOV3D: ' num2str(Love_Spectra_if.h)])
 disp(['Normalized difference: ' num2str((Love_Spectra_if.h - h2_analytic_if) / h2_analytic_if * 100)  '%'])
 disp([' % % % % % % % % % % % % % '])
-
-% test
-g = 1.796;
-term1 = (1 / (1 - (mu_avg * 1j / eta_avg / omega)));
-term2 = (19 / 2 * mu_avg / rho_avg / g / (Rad * 1e3));
-k2_test = 3 / 2 * 1 / (1 + term2 * term1);
-disp(['SLIDES:'])
-disp(['k analytical: ', num2str(k2_test)])
-disp(['k LOV3D: ' num2str(Love_Spectra_ve.k)])
-disp(['Normalized difference: ' num2str((Love_Spectra_ve.k - k2_test) / k2_test * 100)  '%'])
