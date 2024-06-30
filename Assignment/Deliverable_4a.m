@@ -20,28 +20,24 @@ Startall = tic;
 
 %% Io parameters
 G = 6.67430E-11;
-r_l = 1821.6; % Lithosphere radius in [km] 
-r_a = 1791.6; % Asthenosphere radius in [km] 
-r_m = 1741.6; % Mantle radius in [km] 
-r_c = 980; % Core radius in [km] 
+r_cr = 955 + 836.6 + 30; % Crust radius in [km] 
+r_m = 955 + 836.6; % Mantle radius in [km] 
+r_c = 955; % Core radius in [km] 
 
-rho_l = 2700; % Lithosphere density [kg/m³]
-rho_a = 3000; % Asthenosphere density [kg/m³]
-rho_m = 3200; % Mantle density [kg/m³]
-rho_c = 5150; % Core density [kg/m³]
+rho_cr = 3000; % Crust density [kg/m³]
+rho_m = 3263; % Mantle density [kg/m³]
+rho_c = 5165; % Core density [kg/m³]
 
-eta_l = 1e23; % Lithosphere shear viscosity [Pa s]
-eta_a = 1e23; % Asthenosphere shear viscosity [Pa s]
-eta_m = 1e23; % Mantle shear viscosity [Pa s]
+
+eta_cr = 1e23; % Crust shear viscosity [Pa s]
+eta_m = 1e19; % Mantle shear viscosity [Pa s]
 eta_c = 0.0; % Core shear viscosity [Pa s]
 
-mu_l = 6.5e10; % Lithosphere shear modulus [Pa s]
-mu_a = 6e10; % Asthenosphere shear modulus [Pa s]
+mu_cr = 6.5e10; % Crust shear modulus [Pa s]
 mu_m = 6e10; % Mantle shear modulus [Pa s]
 mu_c = 0.0; % Core shear modulus [Pa s]
 
-K_l = 200e9; % Lithosphere bulk modulus [Pa]
-K_a = 200e9; % Asthenosphere bulk modulus [Pa]
+K_cr = 200e9; % Crust bulk modulus [Pa]
 K_m = 200e9; % Mantle bulk modulus [Pa]
 K_c = 200e9; % Core bulk modulus [Pa]
 
@@ -66,20 +62,11 @@ Interior_Model_A(2).rho0 = rho_m;
 Interior_Model_A(2).Ks0 = K_m;
 Interior_Model_A(2).mu0 = mu_m;
 
-
-% Asthenosphere
-Interior_Model_A(3).R0 = r_a;
-Interior_Model_A(3).rho0 = rho_a;
-Interior_Model_A(3).Ks0 = K_a;
-Interior_Model_A(3).mu0 = mu_a;
-
-
-% Lithosphere
-Interior_Model_A(4).R0 = r_l;
-Interior_Model_A(4).rho0 = rho_l;
-Interior_Model_A(4).Ks0 = K_l;
-Interior_Model_A(4).mu0 = mu_l;
-
+% Crust
+Interior_Model_A(3).R0 = r_cr;
+Interior_Model_A(3).rho0 = rho_cr;
+Interior_Model_A(3).Ks0 = K_cr;
+Interior_Model_A(3).mu0 = mu_cr;
 
 % % % % % % % % % % % % % % % % % % % %
 % Layered Viscoelastic Model  % % % % % 
@@ -99,19 +86,12 @@ Interior_Model_B(2).Ks0 = K_m;
 Interior_Model_B(2).mu0 = mu_m;
 Interior_Model_B(2).eta0 = eta_m;
 
-% Asthenosphere
-Interior_Model_B(3).R0 = r_a;
-Interior_Model_B(3).rho0 = rho_a;
-Interior_Model_B(3).Ks0 = K_a;
-Interior_Model_B(3).mu0 = mu_a;
-Interior_Model_B(3).eta0 = eta_a;
-
-% Lithosphere
-Interior_Model_B(4).R0 = r_l;
-Interior_Model_B(4).rho0 = rho_l;
-Interior_Model_B(4).Ks0 = K_l;
-Interior_Model_B(4).mu0 = mu_l;
-Interior_Model_B(4).eta0 = eta_l;
+% Crust
+Interior_Model_B(3).R0 = r_cr;
+Interior_Model_B(3).rho0 = rho_cr;
+Interior_Model_B(3).Ks0 = K_cr;
+Interior_Model_B(3).mu0 = mu_cr;
+Interior_Model_B(3).eta0 = eta_cr;
 
 
 % % % % % % % % % % % % % % % % % % % %
@@ -132,26 +112,19 @@ Interior_Model_C(2).Ks0 = K_m;
 Interior_Model_C(2).mu0 = mu_m;
 Interior_Model_C(2).eta0 = eta_m;
 
-% Asthenosphere
-Interior_Model_C(3).R0 = r_a;
-Interior_Model_C(3).rho0 = rho_a;
-Interior_Model_C(3).Ks0 = K_a;
-Interior_Model_C(3).mu0 = mu_a;
-Interior_Model_C(3).eta0 = eta_a;
-
-% Lithosphere
-Interior_Model_C(4).R0 = r_l;
-Interior_Model_C(4).rho0 = rho_l;
-Interior_Model_C(4).Ks0 = K_l;
-Interior_Model_C(4).mu0 = mu_l;
-Interior_Model_C(4).eta0 = eta_l;
+% Crust
+Interior_Model_C(3).R0 = r_cr;
+Interior_Model_C(3).rho0 = rho_cr;
+Interior_Model_C(3).Ks0 = K_cr;
+Interior_Model_C(3).mu0 = mu_cr;
+Interior_Model_C(3).eta0 = eta_cr;
 
 % % % % % % % % % % % % % %
 % Numerics  % % % % % % % %
 % % % % % % % % % % % % % %
 
 %radial discretization
-Numerics.Nlayers = 4; % number of concentric layers. Including the core!
+Numerics.Nlayers = 3; % number of concentric layers. Including the core!
 Numerics.method = 'variable'; % method of setting the radial points per layer, here fixed number of layers
 Numerics.Nrbase = 2000; % depending on the method this will determine the number of points per layer
 %code parallelization
@@ -225,3 +198,29 @@ disp(['h_2 viscoelastic model ' num2str(Love_Spectra_B.h)])
 
 disp(['k_2 ideal fluid model ' num2str(Love_Spectra_C.k)])
 disp(['h_2 ideal fluid model ' num2str(Love_Spectra_C.h)])
+
+% print relative difference of M1
+
+k_2_e_m1 = 0.0256;
+h_2_e_m1 = 0.043426;
+
+k_2_v_m1 = 0.0256 - 3.6683e-6i;
+h_2_v_m1 = 0.043426 - 6.1201e-6i;
+
+k_2_f_m1 = 1.4952 - 0.090419;
+h_2_f_m1 = 2.4944 - 0.1509i;
+
+disp(['k_2 elastic relative error of M1 ' num2str(rel_error(k_2_e_m1, Love_Spectra_A.k))])
+disp(['h_2 elastic relative error of M1 ' num2str(rel_error(h_2_e_m1, Love_Spectra_A.h))])
+
+disp(['k_2 viscoelastic relative error of M1 ' num2str(rel_error(k_2_v_m1, Love_Spectra_B.k))])
+disp(['h_2 viscoelastic relative error of M1 ' num2str(rel_error(h_2_v_m1, Love_Spectra_B.k))])
+
+disp(['k_2 ideal fluid relative error of M1 ' num2str(rel_error(k_2_f_m1, Love_Spectra_C.k))])
+disp(['h_2 ideal fluid relative error of M1 ' num2str(rel_error(h_2_f_m1, Love_Spectra_C.k))])
+
+
+% define function
+function num = rel_error(a, b)
+    num = 100 * (abs(a) - abs(b))/abs(b);
+end
